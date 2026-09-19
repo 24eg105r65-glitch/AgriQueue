@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Login | AgriQueue Smart Procurement Portal (SIH26032)</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- AgriQueue Vanilla CSS -->
+    <link rel="stylesheet" href="farmer.css">
+</head>
+<body class="auth-page-wrapper">
+
+    <!-- Top Navigation Header -->
+    <header class="kisan-header">
+        <div class="header-container">
+            <a href="farmer_dashboard.html" style="text-decoration: none; color: inherit;">
+                <div class="brand-wrap">
+                    <div class="brand-emblem">
+                        <span class="material-symbols-outlined" style="font-size: 1.75rem;">agriculture</span>
+                    </div>
+                    <div class="brand-titles">
+                        <h1>
+                            <span data-i18n="portalTitle">AgriQueue</span>
+                            <span class="hindi-sub" data-i18n="hindiSub">स्मार्ट किसान खरीद व कतार पोर्टल</span>
+                        </h1>
+                        <p data-i18n="portalSubtitle">Crop Procurement & Mandi Queue Management Platform (SIH26032)</p>
+                    </div>
+                </div>
+            </a>
+
+            <div class="header-actions">
+                <!-- Regional Language Dropdown -->
+                <div class="lang-badge-box">
+                    <span class="material-symbols-outlined" style="color: var(--color-primary); font-size: 1.15rem;">translate</span>
+                    <select id="kisan-lang-select" aria-label="Select Regional Language">
+                        <option value="en">English</option>
+                        <option value="hi" selected>हिन्दी (Hindi)</option>
+                        <option value="te">తెలుగు (Telugu)</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
+                        <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+                        <option value="mr">मराठी (Marathi)</option>
+                        <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                        <option value="bn">বাংলা (Bengali)</option>
+                        <option value="gu">ગુજરાતી (Gujarati)</option>
+                    </select>
+                </div>
+
+                <!-- Master Voice Assistance Button -->
+                <button id="master-voice-toggle" type="button" class="voice-master-btn active-voice" title="Toggle audio voice guidance">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">volume_up</span>
+                    <span data-i18n="voiceOn">आवाज: चालू</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Auth Content -->
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="auth-card-header">
+                <div class="auth-icon-badge">
+                    <span class="material-symbols-outlined" style="font-size: 2rem;">login</span>
+                </div>
+                <h2 data-i18n="loginTitle">किसान लॉगिन (Farmer Sign In)</h2>
+                <p data-i18n="loginSubtitle">फसल खरीद स्लॉट, मंडी कतार और सीधे बैंक भुगतान (DBT) के लिए प्रवेश करें।</p>
+                <div style="margin-top: 0.75rem;">
+                    <button type="button" class="voice-btn" data-voice-key="auth.loginWelcome" style="display: inline-flex; align-items: center; gap: 0.35rem; width: auto; padding: 0.35rem 0.85rem; border-radius: var(--radius-pill); font-size: 0.78rem; font-weight: 700; color: var(--color-primary-dark); background: var(--color-primary-light); border: 1px solid var(--color-primary-border);" title="Listen instructions">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">volume_up</span>
+                        <span>निर्देश सुनें (Listen Login Instructions)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="kisan-login-form" class="form-layout">
+                <div class="form-group-clean">
+                    <div class="field-header-row">
+                        <label class="clean-label" for="login-identifier" data-i18n="loginUserLabel">मोबाइल नंबर या किसान आईडी (Farmer ID / Mobile)</label>
+                        <button type="button" class="voice-btn" data-voice-key="auth.loginUser" title="Listen / आवाज सुनें">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                        </button>
+                    </div>
+                    <input type="text" id="login-identifier" data-voice-key="auth.loginUser" class="clean-input voice-interactive-input" placeholder="e.g. 9876543210 or FAR-2026-8812" value="9876543212" required>
+                </div>
+
+                <div class="form-group-clean">
+                    <div class="field-header-row">
+                        <label class="clean-label" for="login-pin" data-i18n="loginPinLabel">4-अंकों का सुरक्षा पिन (Security PIN / Password)</label>
+                        <button type="button" class="voice-btn" data-voice-key="auth.loginPin" title="Listen / आवाज सुनें">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                        </button>
+                    </div>
+                    <input type="password" id="login-pin" data-voice-key="auth.loginPin" class="clean-input voice-interactive-input" placeholder="••••" maxlength="6" value="1234" required>
+                </div>
+
+                <button type="submit" class="btn-kisan-primary" style="margin-top: 0.75rem;">
+                    <span class="material-symbols-outlined">verified_user</span>
+                    <span data-i18n="loginBtn">लॉगिन करें (SIGN IN TO PORTAL)</span>
+                </button>
+            </form>
+
+            <!-- Quick Demo Credentials for Evaluation -->
+            <div class="demo-farmers-box">
+                <div class="demo-title" data-i18n="demoTitle">⚡ तुरंत परीक्षण हेतु डेमो किसान प्रोफाइल (1-Click Demo Logins)</div>
+                <div class="demo-chips-grid">
+                    <button type="button" class="demo-chip-btn" data-demo-farmer="ramesh">
+                        <span class="demo-chip-name">🌾 रमेश चंद (Ramesh)</span>
+                        <span class="demo-chip-sub">Karnal • 4.5 Acres • Paddy</span>
+                    </button>
+                    <button type="button" class="demo-chip-btn" data-demo-farmer="sukhwinder">
+                        <span class="demo-chip-name">🚜 सुखविंदर सिंह</span>
+                        <span class="demo-chip-sub">Gharaunda • 8.0 Acres • Wheat</span>
+                    </button>
+                    <button type="button" class="demo-chip-btn" data-demo-farmer="venkat">
+                        <span class="demo-chip-name">🌱 వెంకట రావు (Venkat)</span>
+                        <span class="demo-chip-sub">Warangal • 6.2 Acres • Maize</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer Switch -->
+            <div class="auth-switch-footer">
+                <span data-i18n="noAccountText">खाता नहीं है?</span>
+                <a href="signup.html" class="auth-switch-link" data-i18n="registerLinkText">नया किसान पंजीकरण करें (Register New Farmer)</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Shared AgriQueue Logic & Multilingual Engine -->
+    <script src="farmer_app.js"></script>
+</body>
+</html>

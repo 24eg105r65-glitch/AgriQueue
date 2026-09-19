@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriQueue | Smart Farmer Crop Procurement & Queue Management (SIH26032)</title>
+
+    <!-- Google Fonts (Plus Jakarta Sans & JetBrains Mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- AgriQueue Procurement Vanilla CSS (White & Green Theme #137547) -->
+    <link rel="stylesheet" href="farmer.css">
+</head>
+<body>
+
+    <!-- 1. Top Header Navbar -->
+    <header class="kisan-header">
+        <div class="header-container">
+            <div class="brand-wrap">
+                <div class="brand-emblem">
+                    <span class="material-symbols-outlined" style="font-size: 1.75rem;">agriculture</span>
+                </div>
+                <div class="brand-titles">
+                    <h1>
+                        <span data-i18n="portalTitle">AgriQueue</span>
+                        <span class="hindi-sub" data-i18n="hindiSub">स्मार्ट किसान खरीद व कतार पोर्टल</span>
+                    </h1>
+                    <p data-i18n="portalSubtitle">Crop Procurement & Mandi Queue Management Platform (SIH26032)</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- User Profile Session Badge & Logout -->
+                <div class="user-nav-profile">
+                    <div class="user-avatar-circle">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">person</span>
+                    </div>
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--color-primary-dark);" data-i18n="farmerName">रमेश चंद</span>
+                    <button id="btn-logout-header" type="button" class="btn-logout" title="Sign Out">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">logout</span>
+                        <span data-i18n="logoutText">लॉगआउट</span>
+                    </button>
+                </div>
+
+                <!-- Regional Language Dropdown -->
+                <div class="lang-badge-box">
+                    <span class="material-symbols-outlined" style="color: var(--color-primary); font-size: 1.15rem;">translate</span>
+                    <select id="kisan-lang-select" aria-label="Select Regional Language">
+                        <option value="en">English</option>
+                        <option value="hi" selected>हिन्दी (Hindi)</option>
+                        <option value="te">తెలుగు (Telugu)</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
+                        <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+                        <option value="mr">मराठी (Marathi)</option>
+                        <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                        <option value="bn">বাংলা (Bengali)</option>
+                        <option value="gu">ગુજરાતી (Gujarati)</option>
+                    </select>
+                </div>
+
+                <!-- Master Voice Assistance Button -->
+                <button id="master-voice-toggle" type="button" class="voice-master-btn active-voice" title="Toggle audio voice guidance">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">volume_up</span>
+                    <span data-i18n="voiceOn">आवाज: चालू</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. Live Minimum Support Price (MSP) Ticker -->
+    <div class="msp-ticker-strip">
+        <div class="msp-ticker-content">
+            <span class="ticker-tag" data-i18n="govMsp">सरकारी समर्थन मूल्य (MSP 2026)</span>
+            <div class="ticker-crop-item" data-i18n="paddyTicker">🌾 धान (ग्रेड-ए): ₹2,300 / क्विंटल</div>
+            <div class="ticker-crop-item" data-i18n="wheatTicker">🌾 गेहूँ (FAQ): ₹2,275 / क्विंटल</div>
+            <div class="ticker-crop-item" data-i18n="maizeTicker">🌽 मक्का (हाइब्रिड): ₹2,090 / क्विंटल</div>
+            <div class="ticker-crop-item" data-i18n="chanaTicker">🌱 चना: ₹5,440 / क्विंटल</div>
+            <div class="ticker-crop-item" data-i18n="mustardTicker">🌻 सरसों: ₹5,650 / क्विंटल</div>
+        </div>
+    </div>
+
+    <!-- 3. Main Application Layout -->
+    <main class="main-layout">
+
+        <!-- Farmer Profile Ribbon -->
+        <section class="farmer-profile-ribbon">
+            <div class="profile-info">
+                <div class="profile-avatar">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">person</span>
+                </div>
+                <div>
+                    <div class="profile-name" data-i18n="farmerName">रमेश चंद</div>
+                    <div class="profile-details">
+                        <span><span data-i18n="farmerCode">किसान कोड</span>: <strong style="color: var(--color-primary-dark);">FAR-2026-8812</strong></span>
+                        <span>•</span>
+                        <span><span data-i18n="land">जमीन</span>: <strong data-i18n="landVal">4.5 एकड़</strong></span>
+                        <span>•</span>
+                        <span data-i18n="village">गाँव: निलोखेड़ी (करनाल)</span>
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <span class="profile-badge" data-i18n="verifiedBadge">✓ मेरी फसल मेरा ब्यौरा सत्यापित</span>
+                <span class="profile-badge" data-i18n="dbtBadge" style="background: var(--color-secondary-light); color: var(--color-secondary);">SBI डायरेक्ट DBT सक्रिय (खाता ...5019)</span>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <nav class="portal-tabs">
+            <button type="button" class="portal-tab-btn active" data-target="tab-proc-booking">
+                <span class="material-symbols-outlined tab-icon">confirmation_number</span>
+                <span data-i18n="tab1">खरीद स्लॉट व टोकन</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-target="tab-nearest-mandis">
+                <span class="material-symbols-outlined tab-icon">near_me</span>
+                <span data-i18n="tab2">📍 निकटतम खरीद केंद्र</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-target="tab-live-queue">
+                <span class="material-symbols-outlined tab-icon">timer</span>
+                <span data-i18n="tab3">लाइव कतार ट्रैकर (ETA)</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-target="tab-proc-records">
+                <span class="material-symbols-outlined tab-icon">receipt_long</span>
+                <span data-i18n="tab4">खरीद रसीद व MSP भुगतान</span>
+            </button>
+        </nav>
+
+        <!-- ================================================================= -->
+        <!-- TAB 1: MANDI PROCUREMENT SLOT & TOKEN BOOKING                    -->
+        <!-- ================================================================= -->
+        <section id="tab-proc-booking" class="tab-view active">
+            <div class="grid-2-col">
+                
+                <!-- Left: Procurement Booking Form -->
+                <div class="white-card">
+                    <div class="card-header-clean">
+                        <div>
+                            <h2>
+                                <span class="material-symbols-outlined">schedule</span>
+                                <span data-i18n="bookingTitle">खरीद स्लॉट व डिजिटल टोकन बुकिंग</span>
+                            </h2>
+                            <p class="card-subtext" data-i18n="bookingSubtitle">मंडी में बिना कतार इंतजार किए अपना डिजिटल स्लॉट चुनें।</p>
+                        </div>
+                    </div>
+
+                    <form id="kisan-procurement-form" class="form-layout">
+                        
+                        <!-- Crop Type & Quantity -->
+                        <div class="form-row-2">
+                            <div class="form-group-clean">
+                                <div class="field-header-row">
+                                    <label class="clean-label" for="proc-crop-select" data-i18n="cropLabel">खरीद हेतु फसल (Crop Variety)</label>
+                                    <button type="button" class="voice-btn" data-voice-key="farmer.cropName" title="Listen / आवाज सुनें">
+                                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                                    </button>
+                                </div>
+                                <select id="proc-crop-select" class="clean-select" required>
+                                    <option value="paddy_a">धान ग्रेड-ए (Paddy Grade A) - ₹2,300/q</option>
+                                    <option value="wheat">गेहूँ (Wheat FAQ) - ₹2,275/q</option>
+                                    <option value="maize">मक्का (Maize Hybrid) - ₹2,090/q</option>
+                                    <option value="chana">चना (Gram) - ₹5,440/q</option>
+                                    <option value="mustard">सरसों (Mustard) - ₹5,650/q</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group-clean">
+                                <div class="field-header-row">
+                                    <label class="clean-label" for="proc-qty-input" data-i18n="qtyLabel">अनुमानित मात्रा (क्विंटल)</label>
+                                    <button type="button" class="voice-btn" data-voice-key="farmer.quantity" title="Listen / आवाज सुनें">
+                                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                                    </button>
+                                </div>
+                                <input type="number" id="proc-qty-input" class="clean-input" data-i18n="qtyPlaceholder" placeholder="उदा. 50" min="1" step="0.5" value="50.0" required>
+                            </div>
+                        </div>
+
+                        <!-- Procurement Hub & Slot Selection -->
+                        <div class="form-row-2">
+                            <div class="form-group-clean">
+                                <div class="field-header-row">
+                                    <label class="clean-label" for="proc-hub-select" data-i18n="hubLabel">खरीद केंद्र / मंडी (Procurement Hub)</label>
+                                    <button type="button" class="voice-btn" data-voice-key="farmer.hubSelect" title="Listen / आवाज सुनें">
+                                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                                    </button>
+                                </div>
+                                <select id="proc-hub-select" class="clean-select" required>
+                                    <option value="Karnal Central Procurement Hub">PC-101: करनाल केंद्रीय खरीद केंद्र (सबसे तेज)</option>
+                                    <option value="Gharaunda Agri Mandi Centre">PC-102: घरौंडा अनाज मंडी केंद्र</option>
+                                    <option value="Taraori Grain Market Hub">PC-103: तरावड़ी ग्रेन मार्केट हब</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group-clean">
+                                <div class="field-header-row">
+                                    <label class="clean-label" for="proc-slot-select" data-i18n="slotLabel">आगमन समय स्लॉट (Arrival Slot)</label>
+                                    <button type="button" class="voice-btn" data-voice-key="farmer.sowingDate" title="Listen / आवाज सुनें">
+                                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                                    </button>
+                                </div>
+                                <select id="proc-slot-select" class="clean-select" required>
+                                    <option value="Today 09:00 AM - 10:00 AM">आज 09:00 AM - 10:00 AM (8 स्लॉट शेष)</option>
+                                    <option value="Today 10:00 AM - 11:00 AM" selected>आज 10:00 AM - 11:00 AM (14 स्लॉट शेष)</option>
+                                    <option value="Today 11:00 AM - 12:00 PM">आज 11:00 AM - 12:00 PM (4 स्लॉट शेष)</option>
+                                    <option value="Today 02:00 PM - 03:00 PM">आज 02:00 PM - 03:00 PM (18 स्लॉट शेष)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle & Driver info -->
+                        <div class="form-row-2">
+                            <div class="form-group-clean">
+                                <div class="field-header-row">
+                                    <label class="clean-label" for="proc-vehicle-input" data-i18n="vehicleLabel">वाहन / ट्रॉली नंबर</label>
+                                    <button type="button" class="voice-btn" data-voice-key="farmer.fertilizers" title="Listen / आवाज सुनें">
+                                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                                    </button>
+                                </div>
+                                <input type="text" id="proc-vehicle-input" class="clean-input" placeholder="HR-05-AT-9021" value="HR-05-AT-9021 (Tractor Trolley)">
+                            </div>
+                            <div class="form-group-clean">
+                                <label class="clean-label" data-i18n="phoneLabel">किसान मोबाइल नंबर (आधार लिंक)</label>
+                                <input type="text" class="clean-input" value="98765-43212" readonly style="background: var(--bg-surface-alt); color: var(--text-muted);">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-kisan-primary" style="margin-top: 0.5rem;">
+                            <span class="material-symbols-outlined">confirmation_number</span>
+                            <span data-i18n="bookBtn">स्लॉट बुक करें व टोकन बनाएं (BOOK SLOT)</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right: Expected MSP Payout & FCI Moisture Standards -->
+                <div class="white-card">
+                    <div class="card-header-clean">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+                            <div>
+                                <h2>
+                                    <span class="material-symbols-outlined">calculate</span>
+                                    <span data-i18n="calcTitle">अपेक्षित MSP सरकारी भुगतान</span>
+                                </h2>
+                                <p class="card-subtext" data-i18n="calcSubtitle">नमी परीक्षण व वजन के अनुसार प्रत्यक्ष बैंक ट्रांसफर (DBT)।</p>
+                            </div>
+                            <button type="button" class="voice-btn" data-voice-key="farmer.cropImage" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="payout-calc-box">
+                        <div class="calc-row">
+                            <span data-i18n="mspRateLabel">लागू सरकारी MSP दर:</span>
+                            <strong id="calc-rate-display" style="color: var(--color-primary-dark);">₹2,300 / Quintal</strong>
+                        </div>
+                        <div class="calc-row">
+                            <span data-i18n="moistureNormLabel">स्वीकार्य नमी मानक (Max Moisture):</span>
+                            <span style="font-weight: 700; color: var(--color-primary);" data-i18n="moistureNormVal">≤ 14.0% (ग्रेड ए मानक)</span>
+                        </div>
+                        <div class="calc-row">
+                            <span data-i18n="foreignMatterLabel">विदेशी तत्व (Foreign Matter):</span>
+                            <span data-i18n="foreignMatterVal">≤ 1.0% अनुमत</span>
+                        </div>
+                        <div class="calc-row total-payout">
+                            <span data-i18n="totalPayoutLabel">कुल अनुमानित भुगतान (DBT):</span>
+                            <span id="calc-total-display">₹1,15,000.00</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.25rem; padding: 1rem; background: #ffffff; border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); font-size: 0.78rem; color: var(--text-muted); line-height: 1.6;">
+                        <strong style="color: var(--text-main); display: block; margin-bottom: 0.35rem;" data-i18n="instructionTitle">खरीद प्रक्रिया निर्देश:</strong>
+                        <div data-i18n="instruction1">1. टोकन समय पर खरीद केंद्र के गेट पर पहुंचें।</div>
+                        <div data-i18n="instruction2">2. लैब में डिजिटल नमी जांच (Moisture meter test) करवाएं।</div>
+                        <div data-i18n="instruction3">3. इलेक्ट्रॉनिक धर्मकांटे पर वजन कराकर डिजिटल रसीद प्राप्त करें।</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- TAB 2: GEOLOCATION-BASED NEAREST PROCUREMENT CENTRES              -->
+        <!-- ================================================================= -->
+        <section id="tab-nearest-mandis" class="tab-view">
+            
+            <!-- GPS Location Bar -->
+            <div class="gps-banner-card">
+                <div class="gps-info-wrap">
+                    <div class="gps-radar-icon">
+                        <span class="material-symbols-outlined" style="font-size: 1.6rem;">radar</span>
+                    </div>
+                    <div>
+                        <div class="gps-title" data-i18n="gpsBannerTitle">खेत की लोकेशन व निकटतम सरकारी खरीद केंद्र</div>
+                        <div id="gps-coords-display" class="gps-subtitle" data-i18n="gpsBannerSubtitle">
+                            Farm Location: 29.6857° N, 76.9905° E (Nilokheri, Karnal)
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="btn-gps-detect" class="btn-gps-detect">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">my_location</span>
+                    <span data-i18n="btnGpsDetect">खेत की लोकेशन खोजें (GPS Detect)</span>
+                </button>
+            </div>
+
+            <!-- List of Nearby Mandis -->
+            <div class="white-card">
+                <div class="card-header-clean">
+                    <div>
+                        <h2>
+                            <span class="material-symbols-outlined">near_me</span>
+                            <span data-i18n="nearestMandiTitle">आपके निकटतम खरीद केंद्र एवं मंडियां</span>
+                        </h2>
+                        <p class="card-subtext" data-i18n="nearestMandiSub">स्लॉट बुक करने के लिए किसी भी केंद्र का चयन करें।</p>
+                    </div>
+                </div>
+
+                <div id="nearest-mandis-container" class="mandi-centres-grid">
+                    <!-- Dynamically injected and sorted by distance in farmer_app.js -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- TAB 3: LIVE QUEUE TRACKER & STAGES                                -->
+        <!-- ================================================================= -->
+        <section id="tab-live-queue" class="tab-view">
+            <div class="grid-2-col">
+                
+                <!-- Left: Active Queue Ticket -->
+                <div class="white-card">
+                    <div class="card-header-clean">
+                        <div>
+                            <h2>
+                                <span class="material-symbols-outlined">timer</span>
+                                <span data-i18n="ticketCardTitle">आपका डिजिटल कतार टोकन</span>
+                            </h2>
+                            <p class="card-subtext" data-i18n="ticketCardSubtitle">स्मार्ट AI M/M/c एल्गोरिदम द्वारा लाइव कतार स्थिति।</p>
+                        </div>
+                    </div>
+
+                    <div id="live-ticket-card" class="queue-ticket">
+                        <div class="ticket-header" data-i18n="ticketHeader">🏛️ करनाल केंद्रीय खरीद केंद्र • लेन 2</div>
+                        <div id="active-token-hero" class="ticket-number-display">TK-1042</div>
+                        <div class="ticket-lane-pill" data-i18n="assignedLane">आवंटित काउंटर: काउंटर 2 (Moisture Lab Ready)</div>
+
+                        <div class="ticket-meta-grid">
+                            <div class="ticket-meta-item">
+                                <span data-i18n="currServing">वर्तमान सेवारत</span>
+                                <strong style="color: var(--color-secondary);">TK-1039</strong>
+                            </div>
+                            <div class="ticket-meta-item">
+                                <span data-i18n="estTime">अनुमानित समय</span>
+                                <strong style="color: var(--color-primary-dark);">~9 मिनट</strong>
+                            </div>
+                            <div class="ticket-meta-item">
+                                <span data-i18n="aheadCount">आगे किसान</span>
+                                <strong data-i18n="aheadVal">3 किसान</strong>
+                            </div>
+                        </div>
+
+                        <!-- Stepper -->
+                        <div class="queue-stepper">
+                            <div class="step-item step-done">
+                                <div class="step-circle">✓</div>
+                                <div class="step-label" data-i18n="step1">स्लॉट बुक</div>
+                            </div>
+                            <div class="step-item step-done">
+                                <div class="step-circle">✓</div>
+                                <div class="step-label" data-i18n="step2">गेट एंट्री</div>
+                            </div>
+                            <div class="step-item step-active">
+                                <div class="step-circle">3</div>
+                                <div class="step-label" data-i18n="step3">नमी परीक्षण</div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-circle">4</div>
+                                <div class="step-label" data-i18n="step4">धर्मकांटा वजन</div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-circle">5</div>
+                                <div class="step-label" data-i18n="step5">बैंक भुगतान</div>
+                            </div>
+                        </div>
+
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;" data-i18n="voiceNotice">
+                            📢 जब आपका टोकन काउंटर पर बुलाया जाएगा, लाउडस्पीकर व एसएमएस द्वारा आवाज में सूचना मिलेगी।
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Live Mandi Inspection & Moisture Result Card -->
+                <div class="white-card">
+                    <div class="card-header-clean">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+                            <div>
+                                <h2>
+                                    <span class="material-symbols-outlined">biotech</span>
+                                    <span data-i18n="qualityTitle">लाइव गुणवत्ता व धर्मकांटा स्थिति</span>
+                                </h2>
+                                <p class="card-subtext" data-i18n="qualitySubtitle">लैब नमी व इलेक्ट्रॉनिक वेईब्रिज लाइव डेटा।</p>
+                            </div>
+                            <button type="button" class="voice-btn" data-voice-key="farmer.transferDistributor" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div style="background: var(--bg-surface-alt); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);" data-i18n="moistureTestLabel">डिजिटल नमी मीटर (Moisture Test):</span>
+                                <span class="crop-badge-status" data-i18n="gradePassBadge">11.8% (ग्रेड-ए पास)</span>
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;" data-i18n="moistureDesc">
+                                नमी की मात्रा 14.0% से कम है। 100% पूर्ण MSP दर (₹2,300/q) लागू। शून्य कटौती।
+                            </p>
+                        </div>
+
+                        <div style="background: var(--bg-surface-alt); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);" data-i18n="weighmentLabel">इलेक्ट्रॉनिक वेईब्रिज (Weighment):</span>
+                                <span style="font-family: var(--font-mono); font-weight: 800; color: var(--color-primary-dark);">50.00 Quintals</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; font-family: var(--font-mono);" data-i18n="weighmentDesc">
+                                सकल वजन: 58.20 Qtl • खाली ट्रॉली: 8.20 Qtl = शुद्ध: 50.00 Qtl
+                            </div>
+                        </div>
+
+                        <div style="background: #f0fdf4; border: 1.5px solid var(--color-primary-border); border-radius: var(--radius-md); padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.82rem; font-weight: 800; color: var(--color-primary-dark);" data-i18n="dbtAmountLabel">डीबीटी भुगतान राशि:</span>
+                                <strong style="font-size: 1.1rem; color: #16a34a; font-family: var(--font-mono);">₹1,15,000.00</strong>
+                            </div>
+                            <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;" data-i18n="dbtTransferDesc">
+                                पीएफएमएस (PFMS) द्वारा भारतीय स्टेट बैंक खाते (...5019) में अंतरित किया जा रहा है।
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================================================================= -->
+        <!-- TAB 4: PROCUREMENT J-FORMS & PAYMENT RECEIPTS                     -->
+        <!-- ================================================================= -->
+        <section id="tab-proc-records" class="tab-view">
+            <div class="white-card">
+                <div class="card-header-clean">
+                    <div>
+                        <h2>
+                            <span class="material-symbols-outlined">receipt_long</span>
+                            <span data-i18n="recordsTitle">सरकारी खरीद जे-फॉर्म व भुगतान रसीदें</span>
+                        </h2>
+                        <p class="card-subtext" data-i18n="recordsSubtitle">खरीद केंद्र द्वारा प्रमाणित रसीदें व बैंक लेनदेन विवरण।</p>
+                    </div>
+                </div>
+
+                <div id="procurement-list-container" class="crops-grid-list">
+                    <!-- Dynamic Procurement Batches loaded via farmer_app.js -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Farmer Procurement Logic & Audio Voice Scripts -->
+    <script src="farmer_app.js"></script>
+
+</body>
+</html>

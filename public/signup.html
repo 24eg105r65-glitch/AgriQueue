@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmer Registration | AgriQueue Smart Procurement Portal (SIH26032)</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- AgriQueue Vanilla CSS -->
+    <link rel="stylesheet" href="farmer.css">
+</head>
+<body class="auth-page-wrapper">
+
+    <!-- Top Navigation Header -->
+    <header class="kisan-header">
+        <div class="header-container">
+            <a href="farmer_dashboard.html" style="text-decoration: none; color: inherit;">
+                <div class="brand-wrap">
+                    <div class="brand-emblem">
+                        <span class="material-symbols-outlined" style="font-size: 1.75rem;">agriculture</span>
+                    </div>
+                    <div class="brand-titles">
+                        <h1>
+                            <span data-i18n="portalTitle">AgriQueue</span>
+                            <span class="hindi-sub" data-i18n="hindiSub">स्मार्ट किसान खरीद व कतार पोर्टल</span>
+                        </h1>
+                        <p data-i18n="portalSubtitle">Crop Procurement & Mandi Queue Management Platform (SIH26032)</p>
+                    </div>
+                </div>
+            </a>
+
+            <div class="header-actions">
+                <!-- Regional Language Dropdown -->
+                <div class="lang-badge-box">
+                    <span class="material-symbols-outlined" style="color: var(--color-primary); font-size: 1.15rem;">translate</span>
+                    <select id="kisan-lang-select" aria-label="Select Regional Language">
+                        <option value="en">English</option>
+                        <option value="hi" selected>हिन्दी (Hindi)</option>
+                        <option value="te">తెలుగు (Telugu)</option>
+                        <option value="ta">தமிழ் (Tamil)</option>
+                        <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+                        <option value="mr">मराठी (Marathi)</option>
+                        <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                        <option value="bn">বাংলা (Bengali)</option>
+                        <option value="gu">ગુજરાતી (Gujarati)</option>
+                    </select>
+                </div>
+
+                <!-- Master Voice Assistance Button -->
+                <button id="master-voice-toggle" type="button" class="voice-master-btn active-voice" title="Toggle audio voice guidance">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">volume_up</span>
+                    <span data-i18n="voiceOn">आवाज: चालू</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Signup Form Content -->
+    <main class="auth-container-wide">
+        <div class="auth-card">
+            <div class="auth-card-header">
+                <div class="auth-icon-badge">
+                    <span class="material-symbols-outlined" style="font-size: 2rem;">person_add</span>
+                </div>
+                <h2 data-i18n="signupTitle">नया किसान पंजीकरण (Farmer KYC Registration)</h2>
+                <p data-i18n="signupSubtitle">सरकारी MSP खरीद, इलेक्ट्रॉनिक धर्मकांटा टोकन व सीधे बैंक खाते (DBT) हेतु पंजीकरण करें।</p>
+            </div>
+
+            <!-- Registration Form -->
+            <form id="kisan-signup-form" class="form-layout">
+                
+                <!-- Row 1: Name & Mobile -->
+                <div class="form-row-2">
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-name" data-i18n="signupNameLabel">किसान का पूरा नाम (Full Name)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupName" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="text" id="signup-name" data-voice-key="auth.signupName" class="clean-input voice-interactive-input" placeholder="e.g. Ramesh Chand" required>
+                    </div>
+
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-mobile" data-i18n="signupMobileLabel">मोबाइल नंबर (Aadhaar Registered Mobile)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupMobile" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="tel" id="signup-mobile" data-voice-key="auth.signupMobile" class="clean-input voice-interactive-input" placeholder="10-digit mobile number" maxlength="10" required>
+                    </div>
+                </div>
+
+                <!-- Row 2: Aadhaar & Land Size -->
+                <div class="form-row-2">
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-aadhaar" data-i18n="signupAadhaarLabel">12-अंकों का आधार नंबर (UIDAI Aadhaar No.)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupAadhaar" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="text" id="signup-aadhaar" data-voice-key="auth.signupAadhaar" class="clean-input voice-interactive-input" placeholder="XXXX-XXXX-XXXX" maxlength="14" required>
+                    </div>
+
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-land" data-i18n="signupLandLabel">कुल कृषि भूमि (Total Land in Acres)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupLand" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="number" id="signup-land" data-voice-key="auth.signupLand" class="clean-input voice-interactive-input" placeholder="e.g. 5.0" step="0.1" min="0.5" required>
+                    </div>
+                </div>
+
+                <!-- Row 3: Village & District / GPS Pin -->
+                <div class="form-row-2">
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-village" data-i18n="signupVillageLabel">गाँव व जिला (Village & District)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupVillage" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="text" id="signup-village" data-voice-key="auth.signupVillage" class="clean-input voice-interactive-input" placeholder="e.g. Nilokheri, Karnal (Haryana)" required>
+                    </div>
+
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" data-i18n="gpsFieldLabel">खेत की लाइव GPS लोकेशन (Farm Coordinates)</label>
+                            <button type="button" id="btn-signup-gps" class="voice-btn" title="Detect GPS Location" style="color: var(--color-primary);">
+                                <span class="material-symbols-outlined" style="font-size: 1.05rem;">my_location</span>
+                            </button>
+                        </div>
+                        <input type="text" id="signup-coordinates" class="clean-input" placeholder="Click icon or detect: 29.6857° N, 76.9905° E" readonly style="background: var(--bg-surface-alt); font-family: var(--font-mono);">
+                    </div>
+                </div>
+
+                <!-- Row 4: Bank Account & IFSC (for DBT Transfer) -->
+                <div class="form-row-2">
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-bank-acc" data-i18n="bankAccLabel">बैंक खाता संख्या (Bank Account No. for DBT)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupBank" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="text" id="signup-bank-acc" data-voice-key="auth.signupBank" class="clean-input voice-interactive-input" placeholder="e.g. 382910485019" required>
+                    </div>
+
+                    <div class="form-group-clean">
+                        <label class="clean-label" for="signup-ifsc" data-i18n="ifscLabel">बैंक IFSC कोड (Bank IFSC Code)</label>
+                        <input type="text" id="signup-ifsc" class="clean-input" placeholder="e.g. SBIN0001234" value="SBIN0001234" required style="font-family: var(--font-mono);">
+                    </div>
+                </div>
+
+                <!-- Row 5: Primary Crop & PIN -->
+                <div class="form-row-2">
+                    <div class="form-group-clean">
+                        <label class="clean-label" for="signup-crop" data-i18n="cropLabel">मुख्य उपजाई जाने वाली फसल (Primary Crop)</label>
+                        <select id="signup-crop" class="clean-select">
+                            <option value="paddy_a">धान (Paddy Grade A)</option>
+                            <option value="wheat">गेहूँ (Wheat FAQ)</option>
+                            <option value="maize">मक्का (Maize Hybrid)</option>
+                            <option value="chana">चना (Gram / Chickpea)</option>
+                            <option value="mustard">सरसों (Mustard)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group-clean">
+                        <div class="field-header-row">
+                            <label class="clean-label" for="signup-pin" data-i18n="createPinLabel">4-अंकों का नया लॉगिन पिन (Set 4-Digit Security PIN)</label>
+                            <button type="button" class="voice-btn" data-voice-key="auth.signupPin" title="Listen / आवाज सुनें">
+                                <span class="material-symbols-outlined" style="font-size: 0.95rem;">volume_up</span>
+                            </button>
+                        </div>
+                        <input type="password" id="signup-pin" data-voice-key="auth.signupPin" class="clean-input voice-interactive-input" placeholder="4 digits" maxlength="4" value="1234" required>
+                    </div>
+                </div>
+
+                <!-- Verification Notice -->
+                <div style="padding: 0.85rem 1rem; background: #f0fdf4; border: 1.5px solid var(--color-primary-border); border-radius: var(--radius-md); font-size: 0.78rem; color: var(--color-primary-dark); display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                    <span class="material-symbols-outlined" style="color: #16a34a; font-size: 1.25rem;">verified</span>
+                    <span data-i18n="govVerificationNote">पंजीकरण के उपरांत मेरी फसल मेरा ब्यौरा व पीएम-किसान डेटाबेस से त्वरित सत्यापन किया जाएगा।</span>
+                </div>
+
+                <button type="submit" class="btn-kisan-primary" style="margin-top: 0.85rem;">
+                    <span class="material-symbols-outlined">how_to_reg</span>
+                    <span data-i18n="completeSignupBtn">पंजीकरण पूरा करें (COMPLETE REGISTRATION)</span>
+                </button>
+            </form>
+
+            <!-- Footer Switch -->
+            <div class="auth-switch-footer">
+                <span data-i18n="alreadyAccountText">पहले से पंजीकृत हैं?</span>
+                <a href="login.html" class="auth-switch-link" data-i18n="loginLinkText">किसान लॉगिन करें (Sign In Here)</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Shared AgriQueue Logic & Multilingual Engine -->
+    <script src="farmer_app.js"></script>
+</body>
+</html>
