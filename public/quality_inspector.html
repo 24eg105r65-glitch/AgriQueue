@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Testing & Moisture Lab | AgriQueue (SIH26032)</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- Shared AgriQueue Vanilla CSS Design System -->
+    <link rel="stylesheet" href="farmer.css">
+
+    <!-- Quality Inspector Module Styles -->
+    <style>
+        .qc-container {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.25rem;
+        }
+
+        /* Top Header Meta */
+        .qc-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .qc-counter-pill {
+            background: var(--color-primary-light);
+            border: 1px solid var(--color-primary-border);
+            padding: 0.35rem 0.85rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--color-primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* 4 Key Metric Stat Cards */
+        .qc-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .qc-stat-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition-fast);
+        }
+
+        .qc-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .qc-stat-icon-box {
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-icon-pending { background: #eff6ff; color: #2563eb; }
+        .stat-icon-passed { background: #dcfce7; color: #16a34a; }
+        .stat-icon-deduction { background: #fff7ed; color: #ea580c; }
+        .stat-icon-rejected { background: #fee2e2; color: #dc2626; }
+
+        .qc-stat-info h3 {
+            font-size: 1.75rem;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-main);
+        }
+
+        .qc-stat-info p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-top: 0.2rem;
+        }
+
+        /* Main Workbench 2-Column Grid */
+        .qc-workbench-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .qc-workbench-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Left Panel: Arrived Trolley Queue */
+        .qc-queue-panel {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 200px);
+        }
+
+        .qc-panel-header {
+            padding: 1.1rem 1.25rem;
+            background: var(--bg-card-header);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .qc-panel-header h2 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .qc-search-filter-box {
+            padding: 0.85rem 1.25rem;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .qc-search-input-wrap {
+            position: relative;
+            margin-bottom: 0.65rem;
+        }
+
+        .qc-search-input-wrap input {
+            width: 100%;
+            padding: 0.6rem 0.85rem 0.6rem 2.2rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            font-size: 0.85rem;
+            font-family: var(--font-sans);
+            outline: none;
+            transition: var(--transition-fast);
+        }
+
+        .qc-search-input-wrap input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(19, 117, 71, 0.12);
+        }
+
+        .qc-search-input-wrap .material-symbols-outlined {
+            position: absolute;
+            left: 0.65rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .qc-filter-chips-row {
+            display: flex;
+            gap: 0.4rem;
+            overflow-x: auto;
+            padding-bottom: 0.2rem;
+        }
+
+        .qc-filter-chip {
+            padding: 0.3rem 0.65rem;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: var(--transition-fast);
+        }
+
+        .qc-filter-chip.active, .qc-filter-chip:hover {
+            background: var(--color-primary);
+            color: #ffffff;
+            border-color: var(--color-primary);
+        }
+
+        .qc-samples-list {
+            padding: 0.75rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .qc-queue-card {
+            background: #ffffff;
+            border: 1.5px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .qc-queue-card:hover {
+            border-color: var(--color-primary-border);
+            background: #f8fafc;
+            transform: translateX(3px);
+        }
+
+        .qc-queue-card.active {
+            border-color: var(--color-primary);
+            background: var(--color-primary-light);
+            box-shadow: 0 2px 10px rgba(19, 117, 71, 0.15);
+        }
+
+        .qc-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.35rem;
+        }
+
+        .qc-card-token {
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            font-size: 0.95rem;
+        }
+
+        .qc-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.55rem;
+            border-radius: var(--radius-pill);
+        }
+
+        .qc-badge-pending { background: #eff6ff; color: #2563eb; }
+        .qc-badge-pass { background: #dcfce7; color: #16a34a; }
+        .qc-badge-deduction { background: #fff7ed; color: #ea580c; }
+        .qc-badge-reject { background: #fee2e2; color: #dc2626; }
+
+        .qc-card-farmer {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: var(--text-main);
+        }
+
+        .qc-card-details {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .qc-card-footer {
+            margin-top: 0.5rem;
+            padding-top: 0.45rem;
+            border-top: 1px dashed var(--border-subtle);
+            font-size: 0.72rem;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Right Panel: Testing Terminal */
+        .qc-testing-terminal {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .qc-active-banner {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--color-primary-border);
+            padding: 1.25rem 1.5rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #ffffff 0%, var(--color-primary-light) 100%);
+        }
+
+        .qc-banner-left h3 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .qc-banner-left p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .qc-banner-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .tag-pill {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            padding: 0.25rem 0.65rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        /* Analyzer Card */
+        .qc-analyzer-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .qc-card-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .qc-card-title-row h3 {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        /* Visual Gauge Layout */
+        .qc-gauge-section {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            background: #f8fafc;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            border: 1px solid var(--border-subtle);
+        }
+
+        @media (max-width: 768px) {
+            .qc-gauge-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .gauge-visual-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gauge-svg-container {
+            position: relative;
+            width: 220px;
+            height: 120px;
+        }
+
+        .gauge-reading-display {
+            text-align: center;
+            margin-top: -15px;
+        }
+
+        .gauge-reading-display .val {
+            font-size: 2.2rem;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            line-height: 1;
+        }
+
+        .gauge-reading-display .lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .gauge-pill {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.3rem 0.85rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .status-pill-optimal { background: #dcfce7; color: #16a34a; }
+        .status-pill-warning { background: #fef3c7; color: #d97706; }
+        .status-pill-danger { background: #fee2e2; color: #dc2626; }
+
+        .gauge-controls-box {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn-probe-scan {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.25rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: var(--shadow-btn);
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-probe-scan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(19, 117, 71, 0.35);
+        }
+
+        .btn-probe-scan:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .presets-row {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-preset-moisture {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            padding: 0.35rem 0.65rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .btn-preset-moisture:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        /* Sliders & Inputs Grid */
+        .qc-inputs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1rem;
+        }
+
+        .qc-input-group {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+
+        .qc-input-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .qc-input-group label span.norm-tag {
+            font-size: 0.72rem;
+            color: var(--color-primary-dark);
+            background: var(--color-primary-light);
+            padding: 0.15rem 0.45rem;
+            border-radius: var(--radius-pill);
+        }
+
+        .slider-with-number {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .slider-with-number input[type="range"] {
+            flex: 1;
+            accent-color: var(--color-primary);
+            cursor: pointer;
+        }
+
+        .slider-with-number input[type="number"] {
+            width: 80px;
+            padding: 0.4rem 0.5rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-align: right;
+            outline: none;
+        }
+
+        /* Decision Evaluation Box */
+        .qc-decision-summary-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--color-primary-border);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .qc-decision-badge {
+            display: block;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .badge-grade-a { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-grade-b { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .badge-grade-reject { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        .qc-calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            background: #f8fafc;
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        @media (max-width: 640px) {
+            .qc-calc-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .qc-calc-item .lbl {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .qc-calc-item .val {
+            font-size: 1.15rem;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            margin-top: 0.2rem;
+        }
+
+        .qc-actions-row {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .btn-qc-action {
+            padding: 0.8rem 1.4rem;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            transition: var(--transition-fast);
+        }
+
+        .btn-qc-pass {
+            background: var(--color-primary);
+            color: #ffffff;
+            box-shadow: var(--shadow-btn);
+        }
+
+        .btn-qc-pass:hover {
+            background: var(--color-primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-qc-deduction {
+            background: var(--color-secondary);
+            color: #ffffff;
+        }
+
+        .btn-qc-deduction:hover {
+            background: var(--color-secondary-hover);
+        }
+
+        .btn-qc-reject {
+            background: #dc2626;
+            color: #ffffff;
+        }
+
+        .btn-qc-reject:hover {
+            background: #b91c1c;
+        }
+
+        .btn-qc-secondary {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            color: #334155;
+        }
+
+        .btn-qc-secondary:hover {
+            background: #f1f5f9;
+        }
+
+        /* Certificate Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .cert-modal-box {
+            background: #ffffff;
+            border-radius: var(--radius-xl);
+            max-width: 780px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 2px solid var(--color-primary-border);
+        }
+
+        .cert-modal-top {
+            padding: 1rem 1.5rem;
+            background: var(--bg-card-header);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cert-box {
+            padding: 2rem;
+            background: #ffffff;
+        }
+
+        .cert-header {
+            text-align: center;
+            padding-bottom: 1.25rem;
+            border-bottom: 2px solid var(--color-primary);
+            margin-bottom: 1.25rem;
+        }
+
+        .cert-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.85rem;
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.25rem;
+            font-size: 0.85rem;
+        }
+
+        .cert-label { color: #64748b; font-size: 0.8rem; }
+        .cert-val { color: var(--text-main); font-weight: 700; margin-left: 0.35rem; }
+
+        .cert-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .cert-table th {
+            background: #f1f5f9;
+            padding: 0.65rem 0.85rem;
+            text-align: left;
+            font-weight: 700;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+
+        .cert-table td {
+            padding: 0.65rem 0.85rem;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+
+        .cert-decision-box {
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .cert-box-pass { background: #f0fdf4; border: 1.5px solid #86efac; }
+        .cert-box-reject { background: #fef2f2; border: 1.5px solid #fca5a5; }
+
+        .cert-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 1.25rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .spin-animation {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @media print {
+            body * { visibility: hidden; }
+            #certificate-print-area, #certificate-print-area * { visibility: visible; }
+            #certificate-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Header Navigation -->
+    <header class="kisan-header">
+        <div class="header-container">
+            <a href="farmer_dashboard.html" style="text-decoration: none; color: inherit;">
+                <div class="brand-wrap">
+                    <div class="brand-emblem">
+                        <span class="material-symbols-outlined" style="font-size: 1.75rem;">biotech</span>
+                    </div>
+                    <div class="brand-titles">
+                        <h1>
+                            <span>AgriQueue</span>
+                            <span class="hindi-sub">गुणवत्ता व नमी जांच प्रयोगशाला</span>
+                        </h1>
+                        <p>Module 3: Quality Lab & Moisture Testing Terminal (SIH26032)</p>
+                    </div>
+                </div>
+            </a>
+
+            <div class="qc-header-meta">
+                <div class="qc-counter-pill">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">science</span>
+                    <span>Lab Counter 2 (Moisture Analyzer)</span>
+                </div>
+
+                <!-- Clock & Navigation Switcher -->
+                <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: #475569;" id="qc-live-clock">
+                    --:--:--
+                </div>
+
+                <a href="farmer_dashboard.html" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;">arrow_back</span>
+                    <span>Farmer Portal</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="qc-container">
+
+        <!-- 2. Top Metric KPI Row -->
+        <div class="qc-stats-grid">
+            <div class="qc-stat-card">
+                <div class="qc-stat-icon-box stat-icon-pending">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">hourglass_top</span>
+                </div>
+                <div class="qc-stat-info">
+                    <h3 id="stat-pending-tests">4</h3>
+                    <p>Awaiting Lab Testing</p>
+                </div>
+            </div>
+
+            <div class="qc-stat-card">
+                <div class="qc-stat-icon-box stat-icon-passed">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">verified</span>
+                </div>
+                <div class="qc-stat-info">
+                    <h3 id="stat-passed-grade-a">1</h3>
+                    <p>Passed (Grade A - 100% MSP)</p>
+                </div>
+            </div>
+
+            <div class="qc-stat-card">
+                <div class="qc-stat-icon-box stat-icon-deduction">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">price_change</span>
+                </div>
+                <div class="qc-stat-info">
+                    <h3 id="stat-deductions">0</h3>
+                    <p>Deduction (Grade B)</p>
+                </div>
+            </div>
+
+            <div class="qc-stat-card">
+                <div class="qc-stat-icon-box stat-icon-rejected">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">block</span>
+                </div>
+                <div class="qc-stat-info">
+                    <h3 id="stat-rejected">0</h3>
+                    <p>Rejected (High Moisture)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Main Workbench 2-Column Grid -->
+        <div class="qc-workbench-grid">
+
+            <!-- LEFT COLUMN: Arrived Trolley Queue -->
+            <div class="qc-queue-panel">
+                <div class="qc-panel-header">
+                    <h2>
+                        <span class="material-symbols-outlined">rv_hookup</span>
+                        <span>Arrived Trolleys Queue</span>
+                    </h2>
+                    <span id="qc-queue-count" class="qc-badge qc-badge-pending">4 Arrived</span>
+                </div>
+
+                <div class="qc-search-filter-box">
+                    <div class="qc-search-input-wrap">
+                        <span class="material-symbols-outlined">search</span>
+                        <input type="text" id="qc-search-input" placeholder="Search Token, Farmer, or Vehicle...">
+                    </div>
+                    <div class="qc-filter-chips-row">
+                        <button type="button" class="qc-filter-chip active" data-filter="ALL">All</button>
+                        <button type="button" class="qc-filter-chip" data-filter="PENDING">Pending</button>
+                        <button type="button" class="qc-filter-chip" data-filter="PASSED">Grade A</button>
+                        <button type="button" class="qc-filter-chip" data-filter="DEDUCTION">Deductions</button>
+                        <button type="button" class="qc-filter-chip" data-filter="REJECTED">Rejected</button>
+                    </div>
+                </div>
+
+                <div class="qc-samples-list" id="qc-samples-list">
+                    <!-- Populated dynamically via quality_app.js -->
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Active Inspection & Digital Moisture Analyzer Terminal -->
+            <div class="qc-testing-terminal">
+
+                <!-- Active Sample Banner -->
+                <div class="qc-active-banner" id="active-sample-banner">
+                    <div class="qc-banner-left">
+                        <h3>
+                            <span class="material-symbols-outlined" style="font-size: 1.4rem;">person_check</span>
+                            <span id="qc-farmer-name">Ramesh Chand</span>
+                        </h3>
+                        <p id="qc-farmer-meta">ID: FAR-2026-8812 • Mobile: 9876543212 • Land: 4.5 Acres (Nilokheri, Karnal)</p>
+                        <div class="qc-banner-tags">
+                            <span class="tag-pill" style="color: var(--color-primary-dark); background: var(--color-primary-light);" id="qc-crop-tag">🌾 Paddy (Grade A)</span>
+                            <span class="tag-pill" style="font-family: var(--font-mono); font-weight: 800;" id="qc-token-tag">TK-1042</span>
+                            <span class="tag-pill">🚛 <span id="qc-vehicle-no">HR-05-T-9812</span></span>
+                            <span class="tag-pill">🕒 Arrived: <span id="qc-arrived-at">09:12 AM</span></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button id="btn-view-cert" type="button" class="btn-qc-action btn-qc-secondary" style="font-size: 0.8rem; padding: 0.5rem 0.85rem;">
+                            <span class="material-symbols-outlined" style="font-size: 1.1rem;">badge</span>
+                            <span>Preview Cert</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Digital Moisture Analyzer & Sensor Probe -->
+                <div class="qc-analyzer-card">
+                    <div class="qc-card-title-row">
+                        <h3>
+                            <span class="material-symbols-outlined" style="color: var(--color-primary);">water_drop</span>
+                            <span>1. Digital Grain Moisture Testing Station</span>
+                        </h3>
+                        <div class="presets-row">
+                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; align-self: center;">Test Presets:</span>
+                            <button type="button" class="btn-preset-moisture" data-val="11.4">11.4% (Optimal)</button>
+                            <button type="button" class="btn-preset-moisture" data-val="13.2">13.2% (Grade A)</button>
+                            <button type="button" class="btn-preset-moisture" data-val="15.0">15.0% (Excess)</button>
+                            <button type="button" class="btn-preset-moisture" data-val="17.2">17.2% (Reject)</button>
+                        </div>
+                    </div>
+
+                    <!-- Gauge Section -->
+                    <div class="qc-gauge-section">
+                        <div class="gauge-visual-wrap">
+                            <div class="gauge-svg-container">
+                                <!-- Dynamic SVG Semi-Circular Gauge -->
+                                <svg width="220" height="120" viewBox="0 0 220 120">
+                                    <!-- Background Arc -->
+                                    <path d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="#e2e8f0" stroke-width="18" stroke-linecap="round" />
+                                    <!-- Optimal Green Zone (5% to 14%) -->
+                                    <path d="M 20 110 A 90 90 0 0 1 125 24" fill="none" stroke="#22c55e" stroke-width="18" stroke-linecap="round" />
+                                    <!-- Warning Amber Zone (14% to 16.5%) -->
+                                    <path d="M 125 24 A 90 90 0 0 1 175 55" fill="none" stroke="#f59e0b" stroke-width="18" />
+                                    <!-- Danger Red Zone (16.5% to 25%) -->
+                                    <path d="M 175 55 A 90 90 0 0 1 200 110" fill="none" stroke="#ef4444" stroke-width="18" stroke-linecap="round" />
+                                    
+                                    <!-- Center Hub -->
+                                    <circle cx="110" cy="110" r="10" fill="#0f172a" />
+                                    <!-- Needle -->
+                                    <line id="gauge-needle-arc" x1="110" y1="110" x2="110" y2="30" stroke="#0f172a" stroke-width="4" stroke-linecap="round" style="transform-origin: 110px 110px; transform: rotate(-35deg); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);" />
+                                </svg>
+                            </div>
+
+                            <div class="gauge-reading-display">
+                                <div class="val" id="gauge-moisture-val">11.8%</div>
+                                <div class="lbl">Moisture Content</div>
+                                <div id="gauge-status-pill" class="gauge-pill status-pill-optimal">✓ Optimal Moisture (Grade A)</div>
+                            </div>
+                        </div>
+
+                        <div class="gauge-controls-box">
+                            <div>
+                                <button type="button" id="btn-probe-scan" class="btn-probe-scan" style="width: 100%;">
+                                    <span class="material-symbols-outlined" style="font-size: 1.2rem;">sensors</span>
+                                    <span>⚡ Read from Digital Moisture Meter (Probe)</span>
+                                </button>
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.35rem; text-align: center;">
+                                    Simulates capacitive digital grain moisture probe reading from lab hardware.
+                                </div>
+                            </div>
+
+                            <div class="slider-with-number" style="margin-top: 0.5rem;">
+                                <input type="range" id="qc-moisture-slider" min="5.0" max="25.0" step="0.1" value="11.8">
+                                <input type="number" id="qc-moisture-input" min="5.0" max="25.0" step="0.1" value="11.8">
+                                <span style="font-size: 0.85rem; font-weight: 700; color: #475569;">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Physical Grain Purity Inputs Grid -->
+                    <div class="qc-inputs-grid">
+                        <div class="qc-input-group">
+                            <label>
+                                <span>Foreign Matter / Chaff</span>
+                                <span class="norm-tag">FCI Norm: ≤ 1.0%</span>
+                            </label>
+                            <div class="slider-with-number">
+                                <input type="range" id="qc-foreign-slider" min="0.0" max="5.0" step="0.05" value="0.4">
+                                <input type="number" id="qc-foreign-input" min="0.0" max="5.0" step="0.05" value="0.40">
+                                <span style="font-size: 0.85rem; font-weight: 700; color: #475569;">%</span>
+                            </div>
+                        </div>
+
+                        <div class="qc-input-group">
+                            <label>
+                                <span>Damaged / Discolored Grain</span>
+                                <span class="norm-tag">FCI Norm: ≤ 4.0%</span>
+                            </label>
+                            <div class="slider-with-number">
+                                <input type="range" id="qc-damaged-slider" min="0.0" max="10.0" step="0.1" value="0.8">
+                                <input type="number" id="qc-damaged-input" min="0.0" max="10.0" step="0.1" value="0.8">
+                                <span style="font-size: 0.85rem; font-weight: 700; color: #475569;">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Government Standards Reference Strip -->
+                    <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: #f0fdf4; border-radius: var(--radius-md); border: 1px solid var(--color-primary-border); font-size: 0.78rem; color: var(--color-primary-dark); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                        <span>📋 <strong>Standard Limit:</strong> <span id="qc-standard-limit">≤ 14.0%</span></span>
+                        <span>🎯 <strong>Optimal Safe Storage:</strong> <span id="qc-standard-optimal">10.0% - 13.0%</span></span>
+                        <span>⚖️ <strong>Deduction Rule:</strong> <span id="qc-standard-deduction-rule">₹35 / Qtl for each 1.0% excess moisture (up to 16.0% max limit).</span></span>
+                    </div>
+                </div>
+
+                <!-- Automated Decision & Financial Certification Summary -->
+                <div class="qc-decision-summary-card">
+                    <div class="qc-card-title-row">
+                        <h3>
+                            <span class="material-symbols-outlined" style="color: var(--color-primary);">fact_check</span>
+                            <span>2. Quality Decision & Certified MSP Rate</span>
+                        </h3>
+                    </div>
+
+                    <div id="qc-decision-badge">
+                        <!-- Grade A / Grade B / Reject Badge -->
+                        <span class="qc-decision-badge badge-grade-a">✓ Grade A (100% Government MSP - No Deduction)</span>
+                    </div>
+
+                    <div class="qc-calc-grid">
+                        <div class="qc-calc-item">
+                            <div class="lbl">Government MSP</div>
+                            <div class="val" id="qc-calc-base-msp">₹2,300 / Qtl</div>
+                        </div>
+                        <div class="qc-calc-item">
+                            <div class="lbl">Moisture Deduction</div>
+                            <div class="val" id="qc-calc-deduction" style="color: var(--status-success);">₹0 (No Cut)</div>
+                        </div>
+                        <div class="qc-calc-item">
+                            <div class="lbl">Certified Net Rate</div>
+                            <div class="val" id="qc-calc-final-rate">₹2,300 / Qtl</div>
+                        </div>
+                        <div class="qc-calc-item">
+                            <div class="lbl">Est. Total Payout</div>
+                            <div class="val" id="qc-calc-total-payout" style="color: var(--color-primary-dark);">₹1,15,000</div>
+                        </div>
+                    </div>
+
+                    <p id="qc-decision-notice" style="font-size: 0.8rem; color: #475569; margin-bottom: 1.25rem;">
+                        ✅ Moisture (11.8%) is within standard FCI limits (≤ 14.0%). Eligible for 100% MSP payout without value cut.
+                    </p>
+
+                    <!-- Action Certification Buttons -->
+                    <div class="qc-actions-row">
+                        <button type="button" id="btn-certify-grade-a" class="btn-qc-action btn-qc-pass">
+                            <span class="material-symbols-outlined">verified</span>
+                            <span>✓ Certify Grade A & Send to Weighbridge</span>
+                        </button>
+
+                        <button type="button" id="btn-approve-deduction" class="btn-qc-action btn-qc-deduction" style="display: none;">
+                            <span class="material-symbols-outlined">check_circle</span>
+                            <span>⚠️ Approve Grade B with Moisture Deduction</span>
+                        </button>
+
+                        <button type="button" id="btn-reject-sample" class="btn-qc-action btn-qc-reject" style="display: none;">
+                            <span class="material-symbols-outlined">cancel</span>
+                            <span>⛔ Reject Lot & Issue Drying Advisory Slip</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 4. Digital Quality Certificate Modal -->
+    <div id="qc-cert-modal" class="modal-overlay">
+        <div class="cert-modal-box">
+            <div class="cert-modal-top">
+                <div style="font-weight: 800; color: var(--color-primary-dark); display: flex; align-items: center; gap: 0.45rem;">
+                    <span class="material-symbols-outlined">verified_user</span>
+                    <span>Official Quality Inspection Certificate</span>
+                </div>
+                <button type="button" id="modal-close-btn" class="btn-qc-action btn-qc-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="certificate-print-area">
+                <!-- Certificate content rendered dynamically -->
+            </div>
+
+            <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.78rem; color: #64748b;">Cryptographically stored in Mandi Procurement Ledger.</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" id="btn-print-certificate" class="btn-qc-action btn-qc-pass" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                        <span class="material-symbols-outlined" style="font-size: 1.1rem;">print</span>
+                        <span>Print Official Certificate</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quality Inspection Controller Script -->
+    <script src="quality_app.js"></script>
+</body>
+</html>
