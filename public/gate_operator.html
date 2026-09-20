@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Entry & Electronic Weighbridge | AgriQueue (SIH26032)</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- Shared AgriQueue Vanilla CSS Design System -->
+    <link rel="stylesheet" href="farmer.css">
+
+    <!-- Gate Operator Module Styles -->
+    <style>
+        .gate-container {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.25rem;
+        }
+
+        /* Top Header Meta */
+        .gate-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .gate-counter-pill {
+            background: var(--color-primary-light);
+            border: 1px solid var(--color-primary-border);
+            padding: 0.35rem 0.85rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--color-primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* 4 Key Metric Stat Cards */
+        .gate-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .gate-stat-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition-fast);
+        }
+
+        .gate-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .gate-stat-icon-box {
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-icon-arrived { background: #eff6ff; color: #2563eb; }
+        .stat-icon-weighing { background: #fff7ed; color: #ea580c; }
+        .stat-icon-completed { background: #dcfce7; color: #16a34a; }
+        .stat-icon-quintals { background: #f5f3ff; color: #7c3aed; }
+
+        .gate-stat-info h3 {
+            font-size: 1.75rem;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-main);
+        }
+
+        .gate-stat-info p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-top: 0.2rem;
+        }
+
+        /* Main Workbench 2-Column Grid */
+        .gate-workbench-grid {
+            display: grid;
+            grid-template-columns: 390px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .gate-workbench-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Left Panel: QR Scanner & Vehicle Queue */
+        .gate-queue-panel {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 200px);
+        }
+
+        .gate-panel-header {
+            padding: 1.1rem 1.25rem;
+            background: var(--bg-card-header);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gate-panel-header h2 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        /* Scanner Station */
+        .gate-scanner-box {
+            padding: 1rem 1.25rem;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .scanner-input-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .scanner-input-row input {
+            flex: 1;
+            padding: 0.6rem 0.85rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            font-size: 0.88rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .scanner-input-row input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(19, 117, 71, 0.12);
+        }
+
+        .btn-scan-action {
+            background: var(--color-primary);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.6rem 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: var(--transition-fast);
+        }
+
+        .btn-scan-action:hover {
+            background: var(--color-primary-hover);
+        }
+
+        /* Camera Viewfinder Simulation */
+        .camera-viewfinder {
+            position: relative;
+            width: 100%;
+            height: 140px;
+            background: #0f172a;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.75rem;
+            display: none;
+            overflow: hidden;
+            border: 2px solid var(--color-primary);
+        }
+
+        .camera-laser-scanline {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #22c55e;
+            box-shadow: 0 0 12px 3px #22c55e;
+            animation: scanAnimation 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes scanAnimation {
+            0% { top: 10%; }
+            100% { top: 90%; }
+        }
+
+        .camera-overlay-text {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #86efac;
+            font-size: 0.72rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+        }
+
+        .gate-filter-chips-row {
+            display: flex;
+            gap: 0.4rem;
+            overflow-x: auto;
+            padding-bottom: 0.2rem;
+        }
+
+        .gate-filter-chip {
+            padding: 0.3rem 0.65rem;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: var(--transition-fast);
+        }
+
+        .gate-filter-chip.active, .gate-filter-chip:hover {
+            background: var(--color-primary);
+            color: #ffffff;
+            border-color: var(--color-primary);
+        }
+
+        .gate-queue-list {
+            padding: 0.75rem;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .gate-queue-card {
+            background: #ffffff;
+            border: 1.5px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .gate-queue-card:hover {
+            border-color: var(--color-primary-border);
+            background: #f8fafc;
+            transform: translateX(3px);
+        }
+
+        .gate-queue-card.active {
+            border-color: var(--color-primary);
+            background: var(--color-primary-light);
+            box-shadow: 0 2px 10px rgba(19, 117, 71, 0.15);
+        }
+
+        .gate-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.35rem;
+        }
+
+        .gate-card-token {
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            font-size: 0.95rem;
+        }
+
+        .gate-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.55rem;
+            border-radius: var(--radius-pill);
+        }
+
+        .badge-scheduled { background: #f1f5f9; color: #475569; }
+        .badge-lab { background: #eff6ff; color: #2563eb; }
+        .badge-weighing { background: #fff7ed; color: #ea580c; }
+        .badge-pass { background: #dcfce7; color: #16a34a; }
+
+        .gate-card-farmer {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: var(--text-main);
+        }
+
+        .gate-card-details {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.3rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .gate-card-footer {
+            margin-top: 0.5rem;
+            padding-top: 0.45rem;
+            border-top: 1px dashed var(--border-subtle);
+            font-size: 0.72rem;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Right Panel: Active Vehicle & Weighbridge Terminal */
+        .gate-terminal-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .gate-active-banner {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--color-primary-border);
+            padding: 1.25rem 1.5rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #ffffff 0%, var(--color-primary-light) 100%);
+        }
+
+        .gate-banner-left h3 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .gate-banner-left p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .gate-banner-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag-pill {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            padding: 0.25rem 0.65rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        /* Section Cards */
+        .gate-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .gate-card-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .gate-card-title-row h3 {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        /* Electronic Weighbridge Terminal */
+        .scale-terminal-box {
+            background: #0f172a;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            color: #ffffff;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+            margin-bottom: 1.25rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .scale-terminal-box {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .scale-display-unit {
+            text-align: center;
+            background: #020617;
+            padding: 1.5rem;
+            border-radius: var(--radius-md);
+            border: 2px solid #334155;
+        }
+
+        .scale-digital-number {
+            font-family: var(--font-mono);
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: #22c55e;
+            letter-spacing: 0.05em;
+            text-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+            line-height: 1;
+        }
+
+        .scale-digital-unit {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-top: 0.4rem;
+        }
+
+        .scale-pill {
+            display: inline-block;
+            margin-top: 0.65rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .scale-pill-gross { background: #1e3a8a; color: #93c5fd; border: 1px solid #3b82f6; }
+        .scale-pill-tare { background: #7c2d12; color: #fdba74; border: 1px solid #f97316; }
+
+        .scale-controls-unit {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .scale-mode-switch {
+            display: flex;
+            background: #1e293b;
+            padding: 0.3rem;
+            border-radius: var(--radius-md);
+            gap: 0.3rem;
+        }
+
+        .btn-scale-mode {
+            flex: 1;
+            padding: 0.65rem;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-weight: 700;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition-fast);
+            font-size: 0.82rem;
+        }
+
+        .btn-scale-mode.active {
+            background: var(--color-primary);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-sensor-capture {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.25rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: var(--transition-fast);
+        }
+
+        .btn-sensor-capture:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(22, 163, 74, 0.55);
+        }
+
+        .btn-sensor-capture:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        /* Calculation 4-Box Summary */
+        .gate-calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            background: #f8fafc;
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+            text-align: center;
+            border: 1px solid var(--border-subtle);
+        }
+
+        @media (max-width: 640px) {
+            .gate-calc-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .gate-calc-item .lbl {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .gate-calc-item .val {
+            font-size: 1.25rem;
+            font-family: var(--font-mono);
+            font-weight: 800;
+            color: var(--color-primary-dark);
+            margin-top: 0.2rem;
+        }
+
+        /* Action Buttons */
+        .gate-actions-row {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-gate-primary {
+            background: var(--color-primary);
+            color: #ffffff;
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.8rem 1.4rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            box-shadow: var(--shadow-btn);
+            transition: var(--transition-fast);
+        }
+
+        .btn-gate-primary:hover {
+            background: var(--color-primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-gate-secondary {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            color: #334155;
+            border-radius: var(--radius-md);
+            padding: 0.8rem 1.2rem;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            transition: var(--transition-fast);
+        }
+
+        .btn-gate-secondary:hover {
+            background: #f1f5f9;
+        }
+
+        /* Weight Slip Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .slip-modal-box {
+            background: #ffffff;
+            border-radius: var(--radius-xl);
+            max-width: 780px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 2px solid var(--color-primary-border);
+        }
+
+        .slip-modal-top {
+            padding: 1rem 1.5rem;
+            background: var(--bg-card-header);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slip-box {
+            padding: 2rem;
+            background: #ffffff;
+        }
+
+        .slip-header {
+            text-align: center;
+            padding-bottom: 1.25rem;
+            border-bottom: 2px solid var(--color-primary);
+            margin-bottom: 1.25rem;
+        }
+
+        .slip-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.85rem;
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.25rem;
+            font-size: 0.85rem;
+        }
+
+        .slip-label { color: #64748b; font-size: 0.8rem; }
+        .slip-val { color: var(--text-main); font-weight: 700; margin-left: 0.35rem; }
+
+        .slip-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .slip-table th {
+            background: #f1f5f9;
+            padding: 0.65rem 0.85rem;
+            text-align: left;
+            font-weight: 700;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+
+        .slip-table td {
+            padding: 0.65rem 0.85rem;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+
+        .slip-financial-box {
+            background: #f0fdf4;
+            border: 1.5px solid #86efac;
+            padding: 1.15rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+        }
+
+        .slip-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 1.25rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .spin-animation {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @media print {
+            body * { visibility: hidden; }
+            #weight-slip-print-area, #weight-slip-print-area * { visibility: visible; }
+            #weight-slip-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Top Header Navbar -->
+    <header class="kisan-header">
+        <div class="header-container">
+            <a href="farmer_dashboard.html" style="text-decoration: none; color: inherit;">
+                <div class="brand-wrap">
+                    <div class="brand-emblem">
+                        <span class="material-symbols-outlined" style="font-size: 1.75rem;">scale</span>
+                    </div>
+                    <div class="brand-titles">
+                        <h1>
+                            <span>AgriQueue</span>
+                            <span class="hindi-sub">गेट एंट्री व इलेक्ट्रॉनिक धर्मकांटा</span>
+                        </h1>
+                        <p>Module 2: Gate In-Out Scanner & Electronic Weighbridge WB-01/02 (SIH26032)</p>
+                    </div>
+                </div>
+            </a>
+
+            <div class="gate-header-meta">
+                <div class="gate-counter-pill">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">local_shipping</span>
+                    <span>Gate 1 (North Entry) • WB-01 (60T)</span>
+                </div>
+
+                <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: #475569;" id="gate-live-clock">
+                    --:--:--
+                </div>
+
+                <!-- Navigation Switchers -->
+                <a href="quality_inspector.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;">biotech</span>
+                    <span>Quality Lab (Module 3)</span>
+                </a>
+
+                <a href="farmer_dashboard.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;">arrow_back</span>
+                    <span>Farmer Portal</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="gate-container">
+
+        <!-- 2. Top Metric KPI Row -->
+        <div class="gate-stats-grid">
+            <div class="gate-stat-card">
+                <div class="gate-stat-icon-box stat-icon-arrived">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">rv_hookup</span>
+                </div>
+                <div class="gate-stat-info">
+                    <h3 id="stat-arrived-count">3</h3>
+                    <p>Trolleys Inside Yard</p>
+                </div>
+            </div>
+
+            <div class="gate-stat-card">
+                <div class="gate-stat-icon-box stat-icon-weighing">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">scale</span>
+                </div>
+                <div class="gate-stat-info">
+                    <h3 id="stat-awaiting-weigh">2</h3>
+                    <p>Awaiting Weighment</p>
+                </div>
+            </div>
+
+            <div class="gate-stat-card">
+                <div class="gate-stat-icon-box stat-icon-completed">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">check_circle</span>
+                </div>
+                <div class="gate-stat-info">
+                    <h3 id="stat-completed-weigh">1</h3>
+                    <p>Weighments Completed</p>
+                </div>
+            </div>
+
+            <div class="gate-stat-card">
+                <div class="gate-stat-icon-box stat-icon-quintals">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">inventory_2</span>
+                </div>
+                <div class="gate-stat-info">
+                    <h3 id="stat-net-quintals">60.0 Q</h3>
+                    <p>Total Net Procured</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Main Workbench 2-Column Grid -->
+        <div class="gate-workbench-grid">
+
+            <!-- LEFT COLUMN: QR Scanner & Arrived Queue -->
+            <div class="gate-queue-panel">
+                <div class="gate-panel-header">
+                    <h2>
+                        <span class="material-symbols-outlined">qr_code_scanner</span>
+                        <span>Gate Intake & Schedule</span>
+                    </h2>
+                    <span id="gate-queue-count" class="gate-badge badge-lab">5 Vehicles</span>
+                </div>
+
+                <!-- Scanner Station -->
+                <div class="gate-scanner-box">
+                    <div class="scanner-input-row">
+                        <input type="text" id="scan-token-input" placeholder="Scan Token (TK-XXXX) or Vehicle Plate...">
+                        <button type="button" id="btn-lookup-token" class="btn-scan-action">
+                            <span class="material-symbols-outlined">search</span>
+                        </button>
+                        <button type="button" id="btn-toggle-camera" class="btn-scan-action" style="background: #334155;" title="Simulate Camera QR Scanner">
+                            <span class="material-symbols-outlined">photo_camera</span>
+                        </button>
+                    </div>
+
+                    <!-- Camera Viewfinder Box -->
+                    <div class="camera-viewfinder" id="camera-viewfinder-box">
+                        <div class="camera-laser-scanline"></div>
+                        <div class="camera-overlay-text">📷 Scanning QR Code on Farmer Mobile...</div>
+                    </div>
+
+                    <!-- Quick 1-Click Test Presets -->
+                    <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; margin-bottom: 0.35rem;">Quick Token Pick:</div>
+                    <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                        <button type="button" class="btn-filter-chip btn-quick-scan" data-token="TK-1042" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;">TK-1042 (Ramesh)</button>
+                        <button type="button" class="btn-filter-chip btn-quick-scan" data-token="TK-1045" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;">TK-1045 (Gurpreet)</button>
+                        <button type="button" class="btn-filter-chip btn-quick-scan" data-token="TK-1048" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;">TK-1048 (Jagdish)</button>
+                        <button type="button" class="btn-filter-chip btn-quick-scan" data-token="TK-1051" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer;">TK-1051 (Rajeshwar)</button>
+                    </div>
+
+                    <div class="gate-filter-chips-row" style="margin-top: 0.75rem;">
+                        <button type="button" class="gate-filter-chip active" data-filter="ALL">All</button>
+                        <button type="button" class="gate-filter-chip" data-filter="SCHEDULED">Scheduled</button>
+                        <button type="button" class="gate-filter-chip" data-filter="IN_LAB">In Lab</button>
+                        <button type="button" class="gate-filter-chip" data-filter="WEIGHING">Weighing</button>
+                        <button type="button" class="gate-filter-chip" data-filter="COMPLETED">Completed</button>
+                    </div>
+                </div>
+
+                <div class="gate-queue-list" id="gate-queue-list">
+                    <!-- Populated dynamically via gate_app.js -->
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Active Vehicle & Weighbridge Terminal -->
+            <div class="gate-terminal-panel">
+
+                <!-- Active Vehicle Banner -->
+                <div class="gate-active-banner" id="active-vehicle-banner">
+                    <div class="gate-banner-left">
+                        <h3>
+                            <span class="material-symbols-outlined" style="font-size: 1.4rem;">local_shipping</span>
+                            <span id="gate-farmer-name">Ramesh Chand</span>
+                        </h3>
+                        <p id="gate-farmer-meta">ID: FAR-2026-8812 • Mobile: 9876543212 • Land: 4.5 Acres (Nilokheri, Karnal)</p>
+                        <div class="gate-banner-tags">
+                            <span class="tag-pill" style="font-family: var(--font-mono); font-weight: 800; color: var(--color-primary-dark);" id="gate-token-tag">TK-1042</span>
+                            <span class="tag-pill" style="color: var(--color-primary-dark); background: var(--color-primary-light);" id="gate-crop-tag">🌾 Paddy (Grade A)</span>
+                            <span class="tag-pill" style="font-family: var(--font-mono); font-weight: 700;">🚛 <span id="gate-vehicle-tag">HR-05-T-9812</span></span>
+                            <span class="tag-pill">🕒 Slot: <span id="gate-slot-display">Today 10:00 AM - 11:00 AM</span></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span id="gate-status-badge" class="gate-badge badge-weighing" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">Inside Yard</span>
+                    </div>
+                </div>
+
+                <!-- Gate-In Entry Check-in Form Card (If Scheduled) -->
+                <div class="gate-card" id="gate-checkin-controls-card" style="display: none;">
+                    <div class="gate-card-title-row">
+                        <h3>
+                            <span class="material-symbols-outlined" style="color: var(--color-primary);">sensor_door</span>
+                            <span>1. Mandi Gate Intake & Arrival Verification</span>
+                        </h3>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">Assigned Entry Gate</label>
+                            <select id="select-entry-gate" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem;">
+                                <option value="Gate 1 (North Entrance)">Gate 1 (North Entrance - Fastest)</option>
+                                <option value="Gate 2 (East Entrance)">Gate 2 (East Entrance - Heavy Vehicles)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.35rem;">Designated Weighbridge Scale</label>
+                            <select id="select-weighbridge-scale" style="width: 100%; padding: 0.6rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); font-size: 0.85rem;">
+                                <option value="WB-01 (Electronic 60T Platform)">WB-01 (Electronic 60T Platform)</option>
+                                <option value="WB-02 (Electronic 80T Platform)">WB-02 (Electronic 80T Platform)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="button" id="btn-confirm-gate-in" class="btn-gate-primary">
+                            <span class="material-symbols-outlined">check_circle</span>
+                            <span>✓ Confirm Gate-In & Route to Quality Lab</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Electronic Weighbridge Terminal Card -->
+                <div class="gate-card">
+                    <div class="gate-card-title-row">
+                        <h3>
+                            <span class="material-symbols-outlined" style="color: var(--color-primary);">monitor_weight</span>
+                            <span>2. Electronic Weighbridge Scale Terminal (WB-01/02)</span>
+                        </h3>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748b;">
+                            Scale Calibration: <span style="color: #16a34a;">✓ Active (NABL Certified)</span>
+                        </div>
+                    </div>
+
+                    <!-- Digital LED Scale Display & Controls -->
+                    <div class="scale-terminal-box">
+                        <div class="scale-display-unit">
+                            <div class="scale-digital-number" id="scale-digital-display-val">58.20</div>
+                            <div class="scale-digital-unit">QUINTALS (1 Qtl = 100 Kg)</div>
+                            <div id="scale-status-pill" class="scale-pill scale-pill-gross">⚖️ GROSS WEIGHT (LOADED VEHICLE)</div>
+                        </div>
+
+                        <div class="scale-controls-unit">
+                            <div class="scale-mode-switch">
+                                <button type="button" id="btn-mode-gross" class="btn-scale-mode active">1. Gross Weight (Loaded)</button>
+                                <button type="button" id="btn-mode-tare" class="btn-scale-mode">2. Tare Weight (Empty)</button>
+                            </div>
+
+                            <button type="button" id="btn-capture-scale-reading" class="btn-sensor-capture">
+                                <span class="material-symbols-outlined" style="font-size: 1.2rem;">sensors</span>
+                                <span>⚡ Read from Electronic Weighbridge Scale</span>
+                            </button>
+
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="range" id="scale-weight-slider" min="0.0" max="150.0" step="0.1" value="58.20" style="flex: 1; accent-color: var(--color-primary); cursor: pointer;">
+                                <input type="number" id="scale-weight-input" min="0.0" max="150.0" step="0.1" value="58.20" style="width: 85px; padding: 0.4rem 0.5rem; font-family: var(--font-mono); font-weight: 700; font-size: 0.95rem; text-align: right; border-radius: var(--radius-sm); border: 1px solid #334155; background: #020617; color: #22c55e;">
+                                <button type="button" id="btn-zero-scale" class="btn-gate-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; background: #1e293b; color: #ffffff; border: none;">ZERO</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weighment Calculation Summary 4-Box -->
+                    <div class="gate-calc-grid">
+                        <div class="gate-calc-item">
+                            <div class="lbl">1. Gross (Loaded)</div>
+                            <div class="val" id="calc-gross-weight">58.20 Qtl</div>
+                        </div>
+                        <div class="gate-calc-item">
+                            <div class="lbl">2. Tare (Empty)</div>
+                            <div class="val" id="calc-tare-weight">8.20 Qtl</div>
+                        </div>
+                        <div class="gate-calc-item">
+                            <div class="lbl">3. Certified Net Weight</div>
+                            <div class="val" id="calc-net-weight" style="color: var(--color-primary-dark);">50.00 Qtl</div>
+                        </div>
+                        <div class="gate-calc-item">
+                            <div class="lbl">4. Total Certified MSP</div>
+                            <div class="val" id="calc-total-payout-amount" style="color: #16a34a;">₹1,15,000</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #475569; margin-bottom: 1.25rem;">
+                        <span>Declared Farmer Estimate: <strong>50.0 Qtl</strong> • Variance: <strong id="calc-weight-variance" style="color: var(--status-success);">+0.00 Qtl (✓ Match)</strong></span>
+                        <span style="font-size: 0.75rem; color: #64748b;">FCI Electronic Tare Deduction Protocol Active.</span>
+                    </div>
+
+                    <!-- Action Certification Buttons -->
+                    <div class="gate-actions-row">
+                        <button type="button" id="btn-view-weight-slip" class="btn-gate-secondary">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                            <span>Preview J-Weigh Slip</span>
+                        </button>
+
+                        <button type="button" id="btn-save-gross-weighment" class="btn-gate-primary" style="background: #ea580c;">
+                            <span class="material-symbols-outlined">done</span>
+                            <span>Save 1st Weighment (Gross Loaded)</span>
+                        </button>
+
+                        <button type="button" id="btn-certify-tare-weighment" class="btn-gate-primary" style="display: none;">
+                            <span class="material-symbols-outlined">verified</span>
+                            <span>✓ Certify Final Net Weight & Issue Weight Slip</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 4. Electronic Weighment Slip (J-Weigh Certificate) Modal -->
+    <div id="weight-slip-modal" class="modal-overlay">
+        <div class="slip-modal-box">
+            <div class="slip-modal-top">
+                <div style="font-weight: 800; color: var(--color-primary-dark); display: flex; align-items: center; gap: 0.45rem;">
+                    <span class="material-symbols-outlined">verified</span>
+                    <span>Official Electronic Weighment Certificate</span>
+                </div>
+                <button type="button" id="slip-modal-close-btn" class="btn-gate-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="weight-slip-print-area">
+                <!-- Weighment Slip dynamically populated -->
+            </div>
+
+            <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.78rem; color: #64748b;">Digitally synchronized with Mandi J-Form Ledger & PFMS DBT Portal.</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" id="btn-print-weight-slip" class="btn-gate-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                        <span class="material-symbols-outlined" style="font-size: 1.1rem;">print</span>
+                        <span>Print Official Weight Slip</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gate Controller Script -->
+    <script src="gate_app.js"></script>
+</body>
+</html>
