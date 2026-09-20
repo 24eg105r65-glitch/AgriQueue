@@ -60,6 +60,14 @@
     }
   };
 
+  // Shared data layer (ops_store.js): farmer booking records, incl. their default seed records
+  const store = window.AgriQueueStore;
+
+  // ₹/Qtl value cut for moisture above the crop's standard limit
+  function deductionFor(std, moisture) {
+    return Math.round(Math.max(0, moisture - std.maxMoisture) * std.deductionPerExcessPct);
+  }
+
   // Seed Queue of Arrived Trolleys for Lab Inspection
   const INITIAL_LAB_SAMPLES = [
     {
@@ -260,12 +268,32 @@
     }
   }
 
+  // Trolleys checked in at the gate (Module 2) are appended to storage by another page;
+  // keep them instead of overwriting the key with this page's older in-memory list.
+  function mergeStoredSamples() {
+    try {
+      const stored = JSON.parse(localStorage.getItem("agriqueue_qc_samples") || "[]");
+      stored.forEach(s => {
+        if (!samplesQueue.some(m => m.tokenId === s.tokenId)) samplesQueue.push(s);
+      });
+    } catch (e) {}
+  }
+
   function saveSamples() {
+    mergeStoredSamples();
     localStorage.setItem("agriqueue_qc_samples", JSON.stringify(samplesQueue));
     updateTopMetrics();
   }
 
   function attachEvents() {
+    // New arrivals from the gate show up live (does not touch the sliders of the sample being tested)
+    window.addEventListener("storage", (e) => {
+      if (e.key !== "agriqueue_qc_samples") return;
+      loadSamples();
+      renderQueue();
+      updateTopMetrics();
+    });
+
     // Search & Filter
     if (el.searchInput) {
       el.searchInput.addEventListener("input", (e) => {
@@ -595,7 +623,7 @@
       // Grade B with deduction
       decision = 'PASS_DEDUCTION';
       const excessMoisture = Math.max(0, moisture - std.maxMoisture);
-      deductionPerQtl = Math.round(excessMoisture * std.deductionPerExcessPct);
+      deductionPerQtl = deductionFor(std, moisture);
 
       if (el.gaugeStatusPill) {
         el.gaugeStatusPill.className = "gauge-pill status-pill-warning";
@@ -671,17 +699,25 @@
 
   function syncWithSharedFarmerBatches(sample, decisionStatus, moisture, std) {
     try {
-      const raw = localStorage.getItem("kisan_procurement_batches");
-      let batches = raw ? JSON.parse(raw) : [];
+      // readBatches() falls back to the farmer portal's default records, so the first write never wipes them
+      const batches = store.readBatches();
 
       let matched = batches.find(b => b.token === sample.tokenId || b.id === sample.tokenId);
       const isPass = decisionStatus === 'PASSED_GRADE_A' || decisionStatus === 'PASSED_DEDUCTION';
+      const gradeName = decisionStatus === 'PASSED_DEDUCTION' ? 'Grade B' : 'Grade A';
+      const deduction = decisionStatus === 'PASSED_DEDUCTION' ? deductionFor(std, moisture) : 0;
+      const netRate = Math.max(0, std.baseMsp - deduction);
 
       if (matched) {
-        matched.step = isPass ? 4 : 3;
-        matched.moisture = `${moisture.toFixed(1)}% (${isPass ? 'Grade A Passed' : 'Moisture High'})`;
+        // Steps: 1 Slot, 2 Gate, 3 Moisture, 4 Weight, 5 DBT. A pass completes step 3; a reject stays at the gate.
+        matched.step = isPass ? Math.max(matched.step || 0, 3) : 2;
+        matched.moisture = `${moisture.toFixed(1)}% (${isPass ? gradeName + ' Passed' : 'Moisture High'})`;
         matched.status = isPass ? "Quality Certified (Weighment in Progress)" : "Quality Recheck Required";
         matched.dbtStatus = isPass ? "Approved by Quality Lab" : "QC Hold";
+        if (isPass) {
+          matched.rate = netRate;
+          matched.total = Math.round(matched.qty * netRate);
+        }
       } else {
         // Add new synchronized record
         batches.unshift({
@@ -693,15 +729,15 @@
           centre: sample.hubName,
           slot: "Today Active Slot",
           status: isPass ? "Quality Certified (Weighment in Progress)" : "Quality Hold",
-          moisture: `${moisture.toFixed(1)}% (${isPass ? 'Grade A Pass' : 'Recheck'})`,
-          rate: std.baseMsp,
-          total: Math.round(sample.estimatedQty * std.baseMsp),
+          moisture: `${moisture.toFixed(1)}% (${isPass ? gradeName + ' Pass' : 'Recheck'})`,
+          rate: netRate,
+          total: Math.round(sample.estimatedQty * netRate),
           dbtStatus: isPass ? "QC Verified • Weighbridge Dispatched" : "QC Hold",
-          step: isPass ? 4 : 3
+          step: isPass ? 3 : 2
         });
       }
 
-      localStorage.setItem("kisan_procurement_batches", JSON.stringify(batches));
+      store.writeBatches(batches);
     } catch (e) {
       console.warn("Could not sync with shared batches", e);
     }
