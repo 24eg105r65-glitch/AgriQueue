@@ -72,14 +72,15 @@ Every procurement transaction follows a deterministic finite-state machine acros
 
 ---
 
-### 🚪 Module 2: Gate & Weighbridge Operator Interface (`gate_operator.html`)
+### 🚪 Module 2: Gate & Weighbridge Operator Interface (`gate_operator.html`) - *[Completed]*
 * **Role**: Physical intake control at the Mandi entrance and weighbridge station.
-* **Key Features to Build**:
-  - **Token / QR Scanner**: Scan farmer's digital token on phone or printed SMS slip.
-  - **Vehicle Entry Queue**: Register Tractor / Trolley license plate number and assign Lane 1/Lane 2.
-  - **Gross Weight Capture**: Digital integration / simulation with Electronic Weighbridge (e.g. 58.20 Qtl).
-  - **Tare Weight Capture**: Second weighing after grain unloading to obtain Net Quantity (e.g. 50.00 Qtl).
-  - **Status Trigger**: Transitions token from `BOOKED` $\rightarrow$ `ARRIVED` $\rightarrow$ `WEIGHMENT_COMPLETED`.
+* **Key Features (Built)**:
+  - **Token / QR Scanner**: Token lookup by number plus a *Simulate Scan* button (same pattern as Module 3's probe simulation; no camera/QR library).
+  - **Vehicle Entry Queue**: Operator registers the Tractor / Trolley plate and the lane is auto-assigned to the least-loaded **open** weighbridge lane (lanes closed in Module 4 are not offered).
+  - **Gross Weight Capture**: Simulated electronic weighbridge reading (or manual entry) in Qtl; persisted, so the trolley can be unloaded between weighings.
+  - **Tare Weight Capture**: Second weighing after unloading, unlocked only once a gross weight exists. Net = Gross − Tare, with a warning above 10% variance from the booked quantity.
+  - **Quality Gate**: Weighing is blocked until Module 3 has passed the lot (a rejected lot can never be weighed).
+  - **Status Trigger**: Transitions token from `BOOKED` $\rightarrow$ `ARRIVED` $\rightarrow$ `WEIGHMENT_COMPLETED`; writes the check-in into the Module 3 queue and the step/qty/total back to the farmer's record. Prints an Electronic Weighment Slip.
 
 ---
 
@@ -97,13 +98,13 @@ Every procurement transaction follows a deterministic finite-state machine acros
 
 ---
 
-### 🏛️ Module 4: Mandi Secretary & District Admin Portal (`admin_dashboard.html`)
+### 🏛️ Module 4: Mandi Secretary & District Admin Portal (`admin_dashboard.html`) - *[Completed]*
 * **Role**: Real-time crowd management, bottleneck prevention, and procurement target tracking.
-* **Key Features to Build**:
-  - **Live Mandi Heatmap**: Total trolleys inside the mandi yard, average wait time, gate throughput.
-  - **Dynamic Counter Management**: Open/Close Weighbridge lanes or Moisture counters based on crowd.
-  - **Procurement Quotas vs Actuals**: Daily commodity procurement metrics against state targets.
-  - **Congestion Alert System**: AI-based warning when wait times exceed 45 minutes.
+* **Key Features (Built)**:
+  - **Live Mandi Heatmap**: Per-station tiles (Gate, Moisture Lab, Weighbridge) showing trolleys in queue, open counters, utilisation and predicted wait, plus KPI cards for trolleys in yard, end-to-end wait, gate throughput and procurement progress. Hub switcher for all 6 centres and a district roll-up table.
+  - **Dynamic Counter Management**: Open/close moisture counters and weighbridge lanes (a station's last open counter cannot be closed). Changes recompute waits immediately and are honoured by the gate's lane assignment.
+  - **Procurement Quotas vs Actuals**: Per-crop daily target (share of the centre's capacity) against Qtl weighed today, with quality-passed-but-unweighed quantity shown separately.
+  - **Congestion Alert System**: Predictive warning from an M/M/c (Erlang-C) queue model (`queue_engine.js`) fed by measured arrival rate and open counters. Amber at ≥ 30 min, red at ≥ 45 min, with a what-if recommendation ("open Lab Counter 3: 56 → 32 min") and a persisted alert/action log. A *Simulate Arrival Surge* tool demonstrates it.
 
 ---
 
@@ -168,6 +169,21 @@ Teammates building other dashboards should read and write data using this standa
 
 ---
 
+### B. Shared Storage Keys (browser `localStorage`, no backend yet)
+
+The modules exchange data through `localStorage`; `public/ops_store.js` (`window.AgriQueueStore`) is the shared adapter used by Modules 2 and 4 and by Module 3's write-back to the farmer records. `AgriQueueStore.getTokens()` returns one merged view shaped like the `TokenSchema` above, with `status` derived from the Section 2 state machine (from gate entries + the QC result, not from the farmer record's numeric `step`).
+
+| Key | Owner (writer) | Content |
+| :--- | :--- | :--- |
+| `kisan_procurement_batches` | Farmer portal; updated by Modules 2 and 3 | Booking records (`token`, `crop`, `qty`, `rate`, `total`, `step`, `status`…). Steps: 1 Slot, 2 Gate, 3 Moisture, 4 Weight, 5 DBT |
+| `agriqueue_qc_samples` | Module 3; gate check-ins are appended by Module 2 | Lab queue and results (`PENDING`, `PASSED_GRADE_A`, `PASSED_DEDUCTION`, `REJECTED`) |
+| `agriqueue_gate_state` | Module 2 | Gate entries (vehicle, lane, weighment), expected arrivals, simulated trolleys |
+| `agriqueue_admin_state` | Module 4 | Counter open/close state per centre, alert/action log |
+
+`queue_engine.js` is a pure Erlang-C (M/M/c) helper (`erlangC`, `estimateWait`, `whatIfExtraCounter`) that can also drive the farmer portal's ETA later.
+
+---
+
 ## 5. Unified Design System Guidelines for Teammates
 
 All new dashboards and pages **must** adhere to the AgriQueue design tokens defined in [`farmer.css`](file:///c:/Users/dines/OneDrive/Desktop/Pushkaran%20Projects/College%20Projects/SIH/public/farmer.css):
@@ -199,6 +215,9 @@ cd AgriQueue
 # 2. Run local development server
 python -m http.server 3000 --directory public
 
-# 3. Access current farmer portal
-http://localhost:3000/farmer_dashboard.html
+# 3. Access the portals
+http://localhost:3000/farmer_dashboard.html     # Module 1: Farmer
+http://localhost:3000/gate_operator.html        # Module 2: Gate & Weighbridge
+http://localhost:3000/quality_inspector.html    # Module 3: Quality Lab
+http://localhost:3000/admin_dashboard.html      # Module 4: Mandi Admin
 ```
