@@ -790,6 +790,71 @@
         .legend-foreign { background: #fee2e2; color: #b91c1c; }
         .legend-discolored { background: #f3e8ff; color: #7e22ce; }
 
+        /* Vision View Toolbar & Loupe */
+        .vision-view-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-vision-view {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            padding: 0.25rem 0.55rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-vision-view:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-vision-view.active {
+            background: #0284c7;
+            border-color: #0284c7;
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+        }
+
+        .grain-loupe-lens {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid #38bdf8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), inset 0 0 10px rgba(0,0,0,0.5);
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 25;
+            background: #000;
+            transform: translate(-50%, -50%);
+        }
+
+        .grain-loupe-lens canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .loupe-crosshair {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: 
+                linear-gradient(to right, transparent 49%, rgba(56, 189, 248, 0.7) 49%, rgba(56, 189, 248, 0.7) 51%, transparent 51%),
+                linear-gradient(to bottom, transparent 49%, rgba(56, 189, 248, 0.7) 49%, rgba(56, 189, 248, 0.7) 51%, transparent 51%);
+        }
+
         /* Certificate Modal */
         .modal-overlay {
             position: fixed;
@@ -1077,14 +1142,29 @@
                     <div class="vision-workbench-layout">
                         <!-- Left: Viewfinder / Canvas Stream -->
                         <div>
-                            <div class="vision-viewfinder-container" id="vision-viewfinder">
-                                <canvas id="grain-vision-canvas" width="600" height="340"></canvas>
+                            <!-- View mode toolbar -->
+                            <div class="vision-view-toolbar">
+                                <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; margin-right: 0.2rem;">View Mode:</span>
+                                <button type="button" class="btn-vision-view active" data-view="all">🎯 All Grains</button>
+                                <button type="button" class="btn-vision-view" data-view="defects">⚠️ Defect Focus</button>
+                                <button type="button" class="btn-vision-view" data-view="loupe">🔍 Interactive Loupe</button>
+                                <button type="button" class="btn-vision-view" data-view="raw">📷 Raw Photo</button>
+                            </div>
+
+                            <div class="vision-viewfinder-container" id="vision-viewfinder" style="position: relative;">
+                                <canvas id="grain-vision-canvas" width="600" height="340" style="cursor: crosshair;"></canvas>
                                 <video id="grain-camera-video" playsinline autoplay></video>
                                 <div class="vision-laser-line" id="vision-laser"></div>
                                 <div class="vision-corner-bracket bracket-tl"></div>
                                 <div class="vision-corner-bracket bracket-tr"></div>
                                 <div class="vision-corner-bracket bracket-bl"></div>
                                 <div class="vision-corner-bracket bracket-br"></div>
+
+                                <!-- Floating Optical Magnifier Loupe Lens -->
+                                <div id="grain-loupe-lens" class="grain-loupe-lens" style="display: none;">
+                                    <canvas id="loupe-canvas" width="120" height="120"></canvas>
+                                    <div class="loupe-crosshair"></div>
+                                </div>
                             </div>
 
                             <!-- Image Quality Assessment (IQA) Indicators -->
@@ -1125,6 +1205,28 @@
 
                         <!-- Right: AI Metric Analysis Panel -->
                         <div class="vision-analytics-panel">
+                            <!-- Selected Grain Live Morphometrics HUD -->
+                            <div class="vision-metric-box" id="grain-inspector-hud" style="border-left: 3px solid #0284c7; background: #f0f9ff;">
+                                <div style="font-size: 0.73rem; font-weight: 800; color: #0369a1; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                                    <span>🔬 Kernel Morphometrics</span>
+                                    <span id="hud-grain-id" style="font-family: var(--font-mono); font-weight: 700; color: #0284c7;">Hover Grain</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; font-size: 0.74rem;">
+                                    <div style="background: #ffffff; padding: 0.3rem 0.45rem; border-radius: 4px; border: 1px solid #bae6fd;">
+                                        <span style="color: #64748b; font-size: 0.67rem; display: block;">Dimensions (L × W)</span>
+                                        <strong id="hud-grain-dims" style="font-family: var(--font-mono); color: #0f172a;">-- mm × -- mm</strong>
+                                    </div>
+                                    <div style="background: #ffffff; padding: 0.3rem 0.45rem; border-radius: 4px; border: 1px solid #bae6fd;">
+                                        <span style="color: #64748b; font-size: 0.67rem; display: block;">Aspect Ratio (L/W)</span>
+                                        <strong id="hud-grain-ar" style="font-family: var(--font-mono); color: #0f172a;">--</strong>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 0.35rem; padding: 0.25rem 0.45rem; background: #ffffff; border-radius: 4px; border: 1px solid #bae6fd; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: #64748b; font-size: 0.7rem;">FCI Quality Standard:</span>
+                                    <span id="hud-grain-badge" class="tag-pill" style="font-size: 0.7rem; padding: 0.1rem 0.45rem; background: #e0f2fe; color: #0369a1; font-weight: 700;">Select Grain</span>
+                                </div>
+                            </div>
+
                             <div class="vision-metric-box">
                                 <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
                                     <span>Detection Breakdown</span>
@@ -1358,6 +1460,7 @@
 
     <!-- Quality Inspection Controller Script -->
     <script src="ops_store.js"></script>
+    <script src="samples/grain_groundtruth.js"></script>
     <script src="quality_app.js"></script>
 </body>
 </html>
