@@ -487,8 +487,12 @@
   }
 
   function injectSurge() {
-    const n = Math.max(1, Math.min(60, parseInt(el.surgeInput.value, 10) || 0));
-    if (!n) return;
+    const raw = parseInt(el.surgeInput.value, 10);
+    if (isNaN(raw) || raw < 1) {
+      el.simNote.textContent = "Enter how many trolleys to add (1 to 60).";
+      return;
+    }
+    const n = Math.min(60, raw);
     store.simulateSurge(hubId, n);
     logAction(`Simulated arrival surge of ${n} trolleys injected`);
     render();
