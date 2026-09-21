@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandi Secretary Admin Portal | AgriQueue (SIH26032)</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+    <!-- Shared AgriQueue Vanilla CSS Design System -->
+    <link rel="stylesheet" href="farmer.css">
+
+    <!-- Operations portal components (identical to the Quality Lab page styles) -->
+    <link rel="stylesheet" href="ops_portal.css">
+
+    <!-- Admin-only layout helpers (design tokens only: no new colours, sizes or radii) -->
+    <style>
+        .ad-two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .ad-two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .ad-block {
+            margin-bottom: 1.5rem;
+        }
+
+        .ad-bar-track {
+            height: 10px;
+            border-radius: var(--radius-pill);
+            background: var(--bg-surface-alt);
+            overflow: hidden;
+            display: flex;
+        }
+
+        .ad-bar-fill {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width var(--transition-smooth);
+        }
+
+        .ad-bar-pipeline {
+            height: 100%;
+            background: var(--color-primary-border);
+            transition: width var(--transition-smooth);
+        }
+
+        .ad-group-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin: 1rem 0 0.5rem;
+        }
+
+        .ad-group-title:first-child {
+            margin-top: 0;
+        }
+
+        .ad-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.85rem;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            background: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .ad-row-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .ad-row-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
+        }
+
+        .ad-rec {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0.9rem;
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .ad-rec-alert { background: #fef2f2; border: 1.5px solid #fca5a5; color: #991b1b; }
+        .ad-rec-watch { background: #fef3c7; border: 1.5px solid #fde68a; color: #92400e; }
+
+        .ad-legend {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-top: 0.85rem;
+        }
+
+        .ad-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: var(--radius-pill);
+            margin-right: 0.35rem;
+        }
+
+        .ad-hub-row {
+            cursor: pointer;
+        }
+
+        .ad-hub-row:hover td {
+            background: #f8fafc;
+        }
+
+        .ad-hub-row.active td {
+            background: var(--color-primary-light);
+        }
+
+        .ad-log-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px dashed var(--border-subtle);
+            font-size: 0.8rem;
+            color: #334155;
+        }
+
+        .ad-log-row:last-child {
+            border-bottom: none;
+        }
+
+        .ad-log-time {
+            margin-left: auto;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Header Navigation -->
+    <header class="kisan-header">
+        <div class="header-container">
+            <a href="farmer_dashboard.html" style="text-decoration: none; color: inherit;">
+                <div class="brand-wrap">
+                    <div class="brand-emblem">
+                        <span class="material-symbols-outlined" style="font-size: 1.75rem;">admin_panel_settings</span>
+                    </div>
+                    <div class="brand-titles">
+                        <h1>
+                            <span>AgriQueue</span>
+                            <span class="hindi-sub">मंडी सचिव प्रशासन</span>
+                        </h1>
+                        <p>Module 4: Mandi Secretary & District Admin Portal (SIH26032)</p>
+                    </div>
+                </div>
+            </a>
+
+            <div class="op-header-meta">
+                <!-- Hub switcher -->
+                <div class="lang-badge-box">
+                    <span class="material-symbols-outlined" style="color: var(--color-primary); font-size: 1.15rem;">hub</span>
+                    <select id="ad-hub-select" aria-label="Select procurement hub"></select>
+                </div>
+
+                <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: #475569;" id="ad-live-clock">
+                    --:--:--
+                </div>
+
+                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                    <a href="farmer_dashboard.html" class="btn-op-action btn-op-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">person</span>
+                        <span>Farmer</span>
+                    </a>
+                    <a href="gate_operator.html" class="btn-op-action btn-op-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">local_shipping</span>
+                        <span>Gate & Scale</span>
+                    </a>
+                    <a href="quality_inspector.html" class="btn-op-action btn-op-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">science</span>
+                        <span>Quality Lab</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="op-container">
+
+        <!-- 2. Congestion Alert Banner -->
+        <div class="ad-block" style="margin-bottom: 1.25rem;">
+            <div id="ad-banner" class="op-decision-badge badge-grade-a" style="margin-bottom: 0.4rem;">—</div>
+            <div id="ad-banner-sub" style="font-size: 0.78rem; color: #64748b; text-align: center;"></div>
+        </div>
+
+        <!-- 3. Top Metric KPI Row -->
+        <div class="op-stats-grid">
+            <div class="op-stat-card">
+                <div class="op-stat-icon-box stat-icon-deduction">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">local_shipping</span>
+                </div>
+                <div class="op-stat-info">
+                    <h3 id="ad-kpi-yard">0</h3>
+                    <p>Trolleys Inside Mandi Yard</p>
+                </div>
+            </div>
+
+            <div class="op-stat-card">
+                <div class="op-stat-icon-box stat-icon-pending">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">hourglass_top</span>
+                </div>
+                <div class="op-stat-info">
+                    <h3 id="ad-kpi-wait">0</h3>
+                    <p>Predicted End-to-End Wait</p>
+                </div>
+            </div>
+
+            <div class="op-stat-card">
+                <div class="op-stat-icon-box stat-icon-passed">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">speed</span>
+                </div>
+                <div class="op-stat-info">
+                    <h3 id="ad-kpi-throughput">0</h3>
+                    <p>Gate Throughput (Trolleys / Hr)</p>
+                </div>
+            </div>
+
+            <div class="op-stat-card">
+                <div class="op-stat-icon-box stat-icon-passed">
+                    <span class="material-symbols-outlined" style="font-size: 1.6rem;">inventory_2</span>
+                </div>
+                <div class="op-stat-info">
+                    <h3 id="ad-kpi-procured">0%</h3>
+                    <p id="ad-kpi-procured-sub">Procured vs Daily Target</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Live Mandi Yard Heatmap -->
+        <div class="op-analyzer-card ad-block">
+            <div class="op-card-title-row">
+                <h3>
+                    <span class="material-symbols-outlined" style="color: var(--color-primary);">grid_view</span>
+                    <span>Live Mandi Yard Heatmap</span>
+                </h3>
+                <span id="ad-heat-hub" class="op-badge op-badge-pending">—</span>
+            </div>
+
+            <div class="mandi-centres-grid" id="ad-heat-grid" style="margin-top: 0;">
+                <!-- Station tiles rendered by admin_app.js -->
+            </div>
+
+            <div class="ad-legend">
+                <span><span class="ad-dot" style="background: var(--color-primary);"></span>Normal</span>
+                <span><span class="ad-dot" style="background: var(--status-warning);"></span>Watch (wait ≥ 30 min or utilisation ≥ 85%)</span>
+                <span><span class="ad-dot" style="background: var(--status-danger);"></span>Congested (wait ≥ 45 min)</span>
+                <span style="margin-left: auto; font-weight: 600;">Predicted with an M/M/c queue model from measured arrivals and open counters.</span>
+            </div>
+        </div>
+
+        <!-- 5. Counter Management + Quotas -->
+        <div class="ad-two-col">
+            <div class="op-analyzer-card">
+                <div class="op-card-title-row">
+                    <h3>
+                        <span class="material-symbols-outlined" style="color: var(--color-primary);">tune</span>
+                        <span>Dynamic Counter Management</span>
+                    </h3>
+                </div>
+
+                <div id="ad-recs"></div>
+                <div id="ad-counters"></div>
+                <div id="ad-counter-msg" style="font-size: 0.78rem; color: #991b1b; margin-top: 0.5rem; min-height: 1rem;"></div>
+            </div>
+
+            <div class="op-analyzer-card">
+                <div class="op-card-title-row">
+                    <h3>
+                        <span class="material-symbols-outlined" style="color: var(--color-primary);">flag</span>
+                        <span>Procurement Quotas vs Actuals</span>
+                    </h3>
+                    <span id="ad-quota-total" class="op-badge op-badge-pending">—</span>
+                </div>
+
+                <div id="ad-quotas"></div>
+
+                <div class="ad-legend" style="margin-top: 0.75rem;">
+                    <span><span class="ad-dot" style="background: var(--color-primary);"></span>Weighed today</span>
+                    <span><span class="ad-dot" style="background: var(--color-primary-border);"></span>Quality-passed, awaiting weighment</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. District Roll-up -->
+        <div class="op-analyzer-card ad-block">
+            <div class="op-card-title-row">
+                <h3>
+                    <span class="material-symbols-outlined" style="color: var(--color-primary);">map</span>
+                    <span>District Roll-up: All Procurement Centres</span>
+                </h3>
+                <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">Click a row to open that hub</span>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="cert-table" style="margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th>Centre</th>
+                            <th>In Yard</th>
+                            <th>Predicted Wait</th>
+                            <th>Lab / Weighbridge Open</th>
+                            <th>Procured vs Target</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ad-district-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 7. Alert Log + Demo Tools -->
+        <div class="ad-two-col">
+            <div class="op-analyzer-card">
+                <div class="op-card-title-row">
+                    <h3>
+                        <span class="material-symbols-outlined" style="color: var(--color-primary);">notifications_active</span>
+                        <span>Congestion Alert & Action Log</span>
+                    </h3>
+                </div>
+                <div id="ad-alert-log"></div>
+            </div>
+
+            <div class="op-analyzer-card">
+                <div class="op-card-title-row">
+                    <h3>
+                        <span class="material-symbols-outlined" style="color: var(--color-primary);">science</span>
+                        <span>Simulation Tools (Demo)</span>
+                    </h3>
+                </div>
+
+                <p style="font-size: 0.8rem; color: #475569; margin-bottom: 1rem;">
+                    Adds simulated trolleys to the selected hub's yard so the congestion warning and counter recommendations can be demonstrated.
+                    Simulated trolleys are admin-only and never appear on the gate or lab screens.
+                </p>
+
+                <div class="op-input-group" style="margin-bottom: 1rem;">
+                    <label>
+                        <span>Arrival surge size</span>
+                        <span class="norm-tag">Trolleys</span>
+                    </label>
+                    <div class="slider-with-number">
+                        <input type="range" id="ad-surge-slider" min="2" max="30" step="1" value="14">
+                        <input type="number" id="ad-surge-input" min="1" max="60" step="1" value="14">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" id="btn-surge" class="btn-probe-scan" style="flex: 1 1 auto; white-space: nowrap;">
+                        <span class="material-symbols-outlined" style="font-size: 1.2rem;">bolt</span>
+                        <span>⚡ Inject Arrival Surge</span>
+                    </button>
+                    <button type="button" id="btn-clear-sim" class="btn-op-action btn-op-secondary" style="white-space: nowrap;">
+                        <span class="material-symbols-outlined" style="font-size: 1.1rem;">delete_sweep</span>
+                        <span>Clear Simulated</span>
+                    </button>
+                </div>
+                <div id="ad-sim-note" style="font-size: 0.75rem; color: #64748b; margin-top: 0.6rem;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Mandi Admin Controller Scripts -->
+    <script src="queue_engine.js"></script>
+    <script src="ops_store.js"></script>
+    <script src="admin_app.js"></script>
+</body>
+</html>

@@ -758,15 +758,20 @@
                 </div>
 
                 <!-- Navigation Switchers -->
-                <a href="quality_inspector.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none;">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">biotech</span>
-                    <span>Quality Lab (Module 3)</span>
-                </a>
-
-                <a href="farmer_dashboard.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none;">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">arrow_back</span>
-                    <span>Farmer Portal</span>
-                </a>
+                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                    <a href="farmer_dashboard.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">person</span>
+                        <span>Farmer Portal</span>
+                    </a>
+                    <a href="quality_inspector.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none; color: var(--color-primary-dark); border-color: var(--color-primary-border); background: var(--color-primary-light);">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">science</span>
+                        <span>Quality Lab (Mod 3)</span>
+                    </a>
+                    <a href="admin_dashboard.html" class="btn-gate-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none; color: #7c3aed; border-color: #ddd6fe; background: #f5f3ff;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">analytics</span>
+                        <span>Mandi Admin (Mod 4)</span>
+                    </a>
+                </div>
             </div>
         </div>
     </header>
@@ -1045,7 +1050,8 @@
         </div>
     </div>
 
-    <!-- Gate Controller Script -->
+    <!-- Gate & Shared Ops Controller Scripts -->
+    <script src="ops_store.js"></script>
     <script src="gate_app.js"></script>
 </body>
 </html>

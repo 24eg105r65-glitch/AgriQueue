@@ -798,15 +798,20 @@
                 </div>
 
                 <!-- Navigation Switchers -->
-                <a href="gate_operator.html" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none; color: #ea580c; border-color: #fed7aa; background: #fff7ed;">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">scale</span>
-                    <span>Gate & Scale (Module 2)</span>
-                </a>
-
-                <a href="farmer_dashboard.html" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; text-decoration: none;">
-                    <span class="material-symbols-outlined" style="font-size: 1rem;">arrow_back</span>
-                    <span>Farmer Portal</span>
-                </a>
+                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                    <a href="farmer_dashboard.html" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">person</span>
+                        <span>Farmer Portal</span>
+                    </a>
+                    <a href="gate_operator.html" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none; color: #ea580c; border-color: #fed7aa; background: #fff7ed;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">scale</span>
+                        <span>Gate & Scale (Mod 2)</span>
+                    </a>
+                    <a href="admin_dashboard.html" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.65rem; text-decoration: none; color: #7c3aed; border-color: #ddd6fe; background: #f5f3ff;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem;">analytics</span>
+                        <span>Mandi Admin (Mod 4)</span>
+                    </a>
+                </div>
             </div>
         </div>
     </header>
@@ -1105,6 +1110,7 @@
     </div>
 
     <!-- Quality Inspection Controller Script -->
+    <script src="ops_store.js"></script>
     <script src="quality_app.js"></script>
 </body>
 </html>
