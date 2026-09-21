@@ -13,9 +13,9 @@ AgriQueue is an end-to-end multi-stakeholder Farmer Crop Procurement, Digital We
    - Real-time queue tracker & AI wait time estimator.
 
 2. **🚪 Module 2: Gate & Weighbridge Operator** (`gate_operator.html`)
-   - Token lookup & simulated QR intake scanner.
-   - Vehicle registration check-in & least-loaded open lane routing.
-   - Quality Lab gating (weighbridge blocked until moisture analysis passes).
+   - Token / vehicle / farmer lookup & simulated QR intake scanner; farmer bookings appear automatically.
+   - Check-in with the vehicle number saved at booking, entry-gate choice & least-loaded open weighbridge lane (lanes closed by the Mandi Secretary are disabled).
+   - Quality Lab gating (weighbridge blocked until moisture analysis passes; rejected lots can never be weighed).
    - Electronic Gross & Tare scale capture, Net weight calculation, and Electronic Weighment Slip printing.
 
 3. **🔬 Module 3: Quality Lab & Moisture Testing** (`quality_inspector.html`)

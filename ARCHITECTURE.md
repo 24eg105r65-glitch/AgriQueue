@@ -75,12 +75,13 @@ Every procurement transaction follows a deterministic finite-state machine acros
 ### 🚪 Module 2: Gate & Weighbridge Operator Interface (`gate_operator.html`) - *[Completed]*
 * **Role**: Physical intake control at the Mandi entrance and weighbridge station.
 * **Key Features (Built)**:
-  - **Token / QR Scanner**: Token lookup by number plus a *Simulate Scan* button (same pattern as Module 3's probe simulation; no camera/QR library).
-  - **Vehicle Entry Queue**: Operator registers the Tractor / Trolley plate and the lane is auto-assigned to the least-loaded **open** weighbridge lane (lanes closed in Module 4 are not offered).
-  - **Gross Weight Capture**: Simulated electronic weighbridge reading (or manual entry) in Qtl; persisted, so the trolley can be unloaded between weighings.
-  - **Tare Weight Capture**: Second weighing after unloading, unlocked only once a gross weight exists. Net = Gross − Tare, with a warning above 10% variance from the booked quantity.
-  - **Quality Gate**: Weighing is blocked until Module 3 has passed the lot (a rejected lot can never be weighed).
-  - **Status Trigger**: Transitions token from `BOOKED` $\rightarrow$ `ARRIVED` $\rightarrow$ `WEIGHMENT_COMPLETED`; writes the check-in into the Module 3 queue and the step/qty/total back to the farmer's record. Prints an Electronic Weighment Slip.
+  - **Token / QR Scanner**: Look up a token by token number, vehicle plate, farmer name or mobile, plus a simulated camera scan (no camera/QR library). Bookings made on the Farmer Portal appear here as *Scheduled*.
+  - **Vehicle Entry**: The plate is the one the farmer typed at booking (saved with the booking; the gate asks for it only on older bookings that lack one). The operator picks the entry gate and the weighbridge scale; the scale defaults to the least-loaded **open** lane, and lanes closed in Module 4 are disabled.
+  - **Gross Weight Capture**: Simulated electronic weighbridge reading (or manual entry) in Qtl; saved as the 1st weighment, so the trolley can be unloaded before the 2nd.
+  - **Tare Weight Capture**: Second weighing after unloading. Net = Gross − Tare, with a variance check against the booked quantity.
+  - **Quality Gate**: Weighing is blocked until Module 3 has passed the lot; a rejected lot can never be weighed. The Grade B moisture deduction from Module 3 flows into the slip and the farmer's payout.
+  - **Status Trigger**: Transitions token from `BOOKED` $\rightarrow$ `ARRIVED` $\rightarrow$ `WEIGHMENT_COMPLETED`. Check-in adds the trolley to the Module 3 queue and moves the farmer's timeline to *Gate* (step 2); completing the weighment sets *Weight* (step 4) and the certified quantity/total. J-Form and DBT stages belong to later modules. Prints an Electronic Weighment Slip.
+  - **Data**: The page is a view over `AgriQueueStore` (see Shared Storage Keys); it keeps no private records.
 
 ---
 
@@ -177,7 +178,7 @@ The modules exchange data through `localStorage`; `public/ops_store.js` (`window
 | :--- | :--- | :--- |
 | `kisan_procurement_batches` | Farmer portal; updated by Modules 2 and 3 | Booking records (`token`, `crop`, `qty`, `rate`, `total`, `step`, `status`…). Steps: 1 Slot, 2 Gate, 3 Moisture, 4 Weight, 5 DBT |
 | `agriqueue_qc_samples` | Module 3; gate check-ins are appended by Module 2 | Lab queue and results (`PENDING`, `PASSED_GRADE_A`, `PASSED_DEDUCTION`, `REJECTED`) |
-| `agriqueue_gate_state` | Module 2 | Gate entries (vehicle, lane, weighment), expected arrivals, simulated trolleys |
+| `agriqueue_gate_state` | Module 2 (through `AgriQueueStore`) | Gate entries (vehicle, entry gate, weighbridge lane, gross/tare/net with timestamps), expected arrivals, simulated trolleys |
 | `agriqueue_admin_state` | Module 4 | Counter open/close state per centre, alert/action log |
 
 `queue_engine.js` is a pure Erlang-C (M/M/c) helper (`erlangC`, `estimateWait`, `whatIfExtraCounter`) that can also drive the farmer portal's ETA later.
