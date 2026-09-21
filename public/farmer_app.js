@@ -1955,6 +1955,7 @@
           qty: qty,
           centre: hub,
           slot: slot,
+          vehicleNo: ((document.getElementById("proc-vehicle-input") || {}).value || "").replace(/\s*\([^)]*\)\s*$/, "").trim(),
           status: "Slot Confirmed (Gate Ready)",
           moisture: "Pending Test (≤14.0% Required)",
           rate: cropInfo.msp,
