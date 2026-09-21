@@ -84,9 +84,9 @@ Every procurement transaction follows a deterministic finite-state machine acros
 
 ---
 
-### 🔬 Module 3: Quality Lab & Moisture Testing Dashboard (`quality_inspector.html`)
+### 🔬 Module 3: Quality Lab & Moisture Testing Dashboard (`quality_inspector.html`) - *[Completed]*
 * **Role**: Digital moisture analysis and quality certification according to FCI standards.
-* **Key Features to Build**:
+* **Key Features (Built)**:
   - **Inspection Queue**: Auto-populated list of arrived farmers waiting for testing.
   - **Moisture Analyzer Input**: Enter moisture % (e.g., Paddy Grade-A: $\le 14.0\%$, Wheat: $\le 12.0\%$).
   - **Impurity / Foreign Matter Rating**: Check for chaff, damaged grains, or mud (Standard: $\le 1.0\%$).
