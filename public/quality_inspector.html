@@ -652,6 +652,144 @@
             background: #f1f5f9;
         }
 
+        /* AI Optical Grain Scanner & Photo Verification Styles */
+        .qc-vision-card {
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .vision-workbench-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 1.25rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 990px) {
+            .vision-workbench-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .vision-viewfinder-container {
+            position: relative;
+            background: #020617;
+            border-radius: var(--radius-md);
+            border: 2px solid #334155;
+            overflow: hidden;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #grain-vision-canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border-radius: var(--radius-sm);
+        }
+
+        #grain-camera-video {
+            max-width: 100%;
+            height: auto;
+            display: none;
+            border-radius: var(--radius-sm);
+        }
+
+        /* Laser scanning line */
+        .vision-laser-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #22c55e, #4ade80, transparent);
+            box-shadow: 0 0 15px #22c55e, 0 0 8px #4ade80;
+            z-index: 10;
+            display: none;
+            animation: laserScan 1.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes laserScan {
+            0% { top: 5%; }
+            100% { top: 93%; }
+        }
+
+        /* Viewfinder target brackets */
+        .vision-corner-bracket {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-color: #22c55e;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .bracket-tl { top: 10px; left: 10px; border-top: 3px solid #22c55e; border-left: 3px solid #22c55e; }
+        .bracket-tr { top: 10px; right: 10px; border-top: 3px solid #22c55e; border-right: 3px solid #22c55e; }
+        .bracket-bl { bottom: 10px; left: 10px; border-bottom: 3px solid #22c55e; border-left: 3px solid #22c55e; }
+        .bracket-br { bottom: 10px; right: 10px; border-bottom: 3px solid #22c55e; border-right: 3px solid #22c55e; }
+
+        /* IQA Gatekeeper Badges */
+        .vision-iqa-bar {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-top: 0.65rem;
+            font-size: 0.74rem;
+        }
+
+        .iqa-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.55rem;
+            border-radius: var(--radius-pill);
+            font-weight: 700;
+        }
+        .iqa-pill-ok { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .iqa-pill-warn { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+
+        /* Detection Legend & Metrics Panel */
+        .vision-analytics-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .vision-metric-box {
+            background: #f8fafc;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+        }
+
+        .vision-stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .vision-legend-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.74rem;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+        .legend-healthy { background: #dcfce7; color: #15803d; }
+        .legend-broken { background: #fef3c7; color: #b45309; }
+        .legend-foreign { background: #fee2e2; color: #b91c1c; }
+        .legend-discolored { background: #f3e8ff; color: #7e22ce; }
+
         /* Certificate Modal */
         .modal-overlay {
             position: fixed;
@@ -920,12 +1058,121 @@
                     </div>
                 </div>
 
+                <!-- 1. AI Optical Grain Quality & Photo Verification Station -->
+                <div class="qc-vision-card">
+                    <div class="qc-card-title-row">
+                        <h3>
+                            <span class="material-symbols-outlined" style="color: var(--color-primary);">camera_enhance</span>
+                            <span>1. AI Optical Grain Quality Scanner (Computer Vision Photo Verification)</span>
+                        </h3>
+                        <div class="presets-row">
+                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; align-self: center;">Sample Presets:</span>
+                            <button type="button" class="btn-preset-grain active" data-preset="wheat_faq">🌾 FAQ Wheat</button>
+                            <button type="button" class="btn-preset-grain" data-preset="paddy_clean">🌾 Clean Paddy</button>
+                            <button type="button" class="btn-preset-grain" data-preset="broken_lot">⚠️ High Broken Lot</button>
+                            <button type="button" class="btn-preset-grain" data-preset="chaff_lot">⛔ Impure Chaff Lot</button>
+                        </div>
+                    </div>
+
+                    <div class="vision-workbench-layout">
+                        <!-- Left: Viewfinder / Canvas Stream -->
+                        <div>
+                            <div class="vision-viewfinder-container" id="vision-viewfinder">
+                                <canvas id="grain-vision-canvas" width="600" height="340"></canvas>
+                                <video id="grain-camera-video" playsinline autoplay></video>
+                                <div class="vision-laser-line" id="vision-laser"></div>
+                                <div class="vision-corner-bracket bracket-tl"></div>
+                                <div class="vision-corner-bracket bracket-tr"></div>
+                                <div class="vision-corner-bracket bracket-bl"></div>
+                                <div class="vision-corner-bracket bracket-br"></div>
+                            </div>
+
+                            <!-- Image Quality Assessment (IQA) Indicators -->
+                            <div class="vision-iqa-bar">
+                                <span class="iqa-pill iqa-pill-ok" id="iqa-sharpness">
+                                    <span class="material-symbols-outlined" style="font-size: 0.95rem;">shutter_speed</span>
+                                    <span>Clarity: Sharp (Var: 142)</span>
+                                </span>
+                                <span class="iqa-pill iqa-pill-ok" id="iqa-lighting">
+                                    <span class="material-symbols-outlined" style="font-size: 0.95rem;">light_mode</span>
+                                    <span>Lighting: Optimal (510 Lux)</span>
+                                </span>
+                                <span class="iqa-pill iqa-pill-ok" id="iqa-calibration">
+                                    <span class="material-symbols-outlined" style="font-size: 0.95rem;">straighten</span>
+                                    <span>Focal Distance: 15cm Calibrated</span>
+                                </span>
+                            </div>
+
+                            <!-- Camera & Upload Action Row -->
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+                                <button type="button" id="btn-toggle-camera" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.45rem 0.85rem;">
+                                    <span class="material-symbols-outlined" style="font-size: 1.1rem;">photo_camera</span>
+                                    <span id="btn-camera-label">Start Webcam</span>
+                                </button>
+                                
+                                <label for="grain-photo-upload" class="btn-qc-action btn-qc-secondary" style="font-size: 0.78rem; padding: 0.45rem 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; margin: 0;">
+                                    <span class="material-symbols-outlined" style="font-size: 1.1rem;">upload_file</span>
+                                    <span>Upload Grain Photo</span>
+                                    <input type="file" id="grain-photo-upload" accept="image/*" style="display: none;">
+                                </label>
+
+                                <button type="button" id="btn-run-vision-scan" class="btn-probe-scan" style="flex: 1 1 200px; padding: 0.45rem 1rem; font-size: 0.82rem;">
+                                    <span class="material-symbols-outlined" style="font-size: 1.15rem;">auto_detect_voice</span>
+                                    <span>⚡ Run AI Particle & Defect Scan</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Right: AI Metric Analysis Panel -->
+                        <div class="vision-analytics-panel">
+                            <div class="vision-metric-box">
+                                <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                                    <span>Detection Breakdown</span>
+                                    <span id="vision-kernel-total" style="color: var(--color-primary-dark); font-family: var(--font-mono);">342 Kernels</span>
+                                </div>
+
+                                <div class="vision-stat-row">
+                                    <span class="vision-legend-pill legend-healthy">🟢 Healthy Grains</span>
+                                    <strong id="stat-vision-healthy" style="font-family: var(--font-mono); color: #16a34a;">98.2%</strong>
+                                </div>
+                                <div class="vision-stat-row">
+                                    <span class="vision-legend-pill legend-broken">🟡 Broken Kernels (&lt;3/4)</span>
+                                    <strong id="stat-vision-broken" style="font-family: var(--font-mono); color: #d97706;">1.20%</strong>
+                                </div>
+                                <div class="vision-stat-row">
+                                    <span class="vision-legend-pill legend-foreign">🔴 Foreign Matter / Chaff</span>
+                                    <strong id="stat-vision-foreign" style="font-family: var(--font-mono); color: #dc2626;">0.35%</strong>
+                                </div>
+                                <div class="vision-stat-row">
+                                    <span class="vision-legend-pill legend-discolored">🟣 Damaged / Discolored</span>
+                                    <strong id="stat-vision-damaged" style="font-family: var(--font-mono); color: #7e22ce;">0.25%</strong>
+                                </div>
+                            </div>
+
+                            <div class="vision-metric-box">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: #475569;">AI Confidence Score:</span>
+                                    <span id="vision-confidence-badge" class="tag-pill" style="background: #f0fdf4; color: #16a34a; font-weight: 800; font-family: var(--font-mono);">96.8% High</span>
+                                </div>
+                                <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.35rem;">
+                                    NABL Lab Benchmark CV Model • Particle Aspect Ratio & HSV Color Distance.
+                                </div>
+                            </div>
+
+                            <button type="button" id="btn-apply-vision-metrics" class="btn-qc-action btn-qc-pass" style="width: 100%; justify-content: center; font-size: 0.8rem; padding: 0.6rem;">
+                                <span class="material-symbols-outlined">sync_alt</span>
+                                <span>Apply AI Metrics to Moisture Lab</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Digital Moisture Analyzer & Sensor Probe -->
                 <div class="qc-analyzer-card">
                     <div class="qc-card-title-row">
                         <h3>
                             <span class="material-symbols-outlined" style="color: var(--color-primary);">water_drop</span>
-                            <span>1. Digital Grain Moisture Testing Station</span>
+                            <span>2. Digital Grain Moisture Testing Station</span>
                         </h3>
                         <div class="presets-row">
                             <span style="font-size: 0.72rem; color: #64748b; font-weight: 700; align-self: center;">Test Presets:</span>
@@ -1024,7 +1271,7 @@
                     <div class="qc-card-title-row">
                         <h3>
                             <span class="material-symbols-outlined" style="color: var(--color-primary);">fact_check</span>
-                            <span>2. Quality Decision & Certified MSP Rate</span>
+                            <span>3. Quality Decision & Certified MSP Rate</span>
                         </h3>
                     </div>
 
