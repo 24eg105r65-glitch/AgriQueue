@@ -34,13 +34,21 @@
 
   const fmt = (ts) => (ts ? store.fmtTime(ts) : null);
 
+  const MAX_PLATFORM_QTL = 150; // capacity of the electronic platform (matches the scale slider)
+
+  function esc(v) {
+    return String(v === undefined || v === null ? "" : v).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
   // Store token -> the record shape this page's UI has always read
   function toRecord(t) {
     const w = t.weighmentReport;
     const part = t.weighing || {};
     const ready = store.weighReadiness(t);
     let status = 'SCHEDULED';
-    if (t.status === 'WEIGHMENT_COMPLETED') status = 'COMPLETED';
+    if (w) status = 'COMPLETED'; // weighed (J-Form / DBT stages come later and are Module 5's)
     else if (t.status !== 'BOOKED') status = part.gross > 0 ? 'GROSS_WEIGHED' : 'GATE_CHECKED_IN';
 
     const base = store.CROPS[t.cropKey].msp;
@@ -242,6 +250,10 @@
       });
     }
     if (el.scannerInput) {
+      el.scannerInput.addEventListener("input", (e) => {
+        searchTerm = e.target.value.toLowerCase().trim();
+        renderQueue();
+      });
       el.scannerInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           const query = el.scannerInput.value.trim().toUpperCase();
@@ -281,11 +293,13 @@
       el.scaleWeightSlider.addEventListener("input", (e) => {
         el.scaleWeightInput.value = parseFloat(e.target.value).toFixed(2);
         updateScaleDisplay(parseFloat(e.target.value));
+        recalculateWeighment();
       });
       el.scaleWeightInput.addEventListener("input", (e) => {
         let val = parseFloat(e.target.value) || 0;
         el.scaleWeightSlider.value = val;
         updateScaleDisplay(val);
+        recalculateWeighment();
       });
     }
 
@@ -431,20 +445,20 @@
       const statusBadge = `<span class="gate-badge ${st.cls}">${st.short}</span>`;
 
       return `
-        <div class="gate-queue-card ${isSelected ? 'active' : ''}" data-token="${r.tokenId}">
+        <div class="gate-queue-card ${isSelected ? 'active' : ''}" data-token="${esc(r.tokenId)}">
           <div class="gate-card-top">
-            <div class="gate-card-token">${r.tokenId}</div>
+            <div class="gate-card-token">${esc(r.tokenId)}</div>
             ${statusBadge}
           </div>
-          <div class="gate-card-farmer">${r.farmerName}</div>
+          <div class="gate-card-farmer">${esc(r.farmerName)}</div>
           <div class="gate-card-details">
-            <span>🌾 <strong>${r.cropName}</strong></span> • 
-            <span>⚖️ <strong>${r.estimatedQty} Qtl</strong></span> • 
-            <span>🚛 <strong>${r.vehicleNo}</strong></span>
+            <span>🌾 <strong>${esc(r.cropName)}</strong></span> • 
+            <span>⚖️ <strong>${esc(r.estimatedQty)} Qtl</strong></span> • 
+            <span>🚛 <strong>${esc(r.vehicleNo)}</strong></span>
           </div>
           <div class="gate-card-footer">
-            <span>🕒 Slot: ${r.slotTime}</span>
-            <span style="color: var(--color-primary-dark); font-weight: 700;">${r.gateInTime ? 'Arrived ' + r.gateInTime : 'Not In Yard'}</span>
+            <span>🕒 Slot: ${esc(r.slotTime)}</span>
+            <span style="color: var(--color-primary-dark); font-weight: 700;">${r.gateInTime ? 'Arrived ' + esc(r.gateInTime) : 'Not In Yard'}</span>
           </div>
         </div>
       `;
@@ -681,9 +695,13 @@
     const record = getRecord(currentRecordId);
     if (!ensureWeighable(record)) return;
 
-    const grossVal = parseFloat(el.scaleWeightInput.value) || (record.estimatedQty + 8.20);
+    const grossVal = parseFloat(el.scaleWeightInput.value);
     if (!(grossVal > 0)) {
-      alert("Please capture a valid gross weight first!");
+      alert("Please capture a valid gross weight first! (It must be greater than zero.)");
+      return;
+    }
+    if (grossVal > MAX_PLATFORM_QTL) {
+      alert(`⚠️ ${grossVal} Qtl is more than the ${MAX_PLATFORM_QTL} Qtl platform capacity. Please re-read the scale.`);
       return;
     }
 
@@ -706,7 +724,11 @@
       return;
     }
 
-    const tareVal = parseFloat(el.scaleWeightInput.value) || 8.20;
+    const tareVal = parseFloat(el.scaleWeightInput.value);
+    if (!(tareVal > 0)) {
+      alert("Please capture a valid tare weight first! (It must be greater than zero.)");
+      return;
+    }
     if (tareVal >= record.grossWeight) {
       alert("⚠️ Tare weight must be less than the gross weight. Please re-read the scale.");
       return;
@@ -736,9 +758,11 @@
     let tare = record.tareWeight;
 
     if (scaleMode === 'GROSS') {
-      gross = parseFloat(el.scaleWeightInput.value) || (record.estimatedQty + 8.20);
+      const v = parseFloat(el.scaleWeightInput.value);
+      gross = isNaN(v) ? record.grossWeight : v;
     } else {
-      tare = parseFloat(el.scaleWeightInput.value) || 8.20;
+      const v = parseFloat(el.scaleWeightInput.value);
+      tare = isNaN(v) ? record.tareWeight : v;
     }
 
     if (el.calcGrossDisplay) {
@@ -832,6 +856,10 @@
   function openWeightSlipModal() {
     const record = getRecord(currentRecordId);
     if (!record || !el.slipModal) return;
+    if (record.status !== 'COMPLETED') {
+      alert("The weighment slip is issued after the net weight has been certified.");
+      return;
+    }
 
     const gross = record.grossWeight || (record.estimatedQty + 8.20);
     const tare = record.tareWeight || 8.20;
@@ -846,13 +874,13 @@
           <div class="slip-header">
             <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">Haryana State Agricultural Marketing Board • Government of India</div>
             <h2 style="font-size: 1.35rem; color: var(--color-primary-dark); margin: 0.35rem 0;">OFFICIAL ELECTRONIC WEIGHBRIDGE CERTIFICATE (J-WEIGH SLIP)</h2>
-            <div style="font-size: 0.82rem; color: #334155;">Central Procurement Hub: <strong>${record.hubName}</strong> • Scale: <strong>${record.weighbridgeScale}</strong></div>
+            <div style="font-size: 0.82rem; color: #334155;">Central Procurement Hub: <strong>${esc(record.hubName)}</strong> • Scale: <strong>${esc(record.weighbridgeScale)}</strong></div>
           </div>
 
           <div class="slip-meta-grid">
             <div>
               <span class="slip-label">Slip No:</span>
-              <strong class="slip-val" style="font-family: var(--font-mono);">WB-2026-${record.tokenId.replace('TK-', '')}-99</strong>
+              <strong class="slip-val" style="font-family: var(--font-mono);">WB-2026-${esc(record.tokenId.replace('TK-', ''))}-99</strong>
             </div>
             <div>
               <span class="slip-label">Date & Time:</span>
@@ -860,19 +888,19 @@
             </div>
             <div>
               <span class="slip-label">Digital Token:</span>
-              <strong class="slip-val" style="font-family: var(--font-mono); color: var(--color-primary-dark);">${record.tokenId}</strong>
+              <strong class="slip-val" style="font-family: var(--font-mono); color: var(--color-primary-dark);">${esc(record.tokenId)}</strong>
             </div>
             <div>
               <span class="slip-label">Farmer Name:</span>
-              <strong class="slip-val">${record.farmerName} (${record.farmerId})</strong>
+              <strong class="slip-val">${esc(record.farmerName)} (${esc(record.farmerId)})</strong>
             </div>
             <div>
               <span class="slip-label">Crop & Variety:</span>
-              <strong class="slip-val">${record.cropName}</strong>
+              <strong class="slip-val">${esc(record.cropName)}</strong>
             </div>
             <div>
               <span class="slip-label">Vehicle Plate / Trolley:</span>
-              <strong class="slip-val" style="font-family: var(--font-mono);">${record.vehicleNo}</strong>
+              <strong class="slip-val" style="font-family: var(--font-mono);">${esc(record.vehicleNo)}</strong>
             </div>
           </div>
 
@@ -890,13 +918,13 @@
                 <td><strong>1. Gross Weight (Loaded Trolley)</strong></td>
                 <td>${record.grossTime || '—'}</td>
                 <td><strong style="font-family: var(--font-mono); font-size: 1.05rem;">${gross.toFixed(2)} Qtl</strong></td>
-                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale ${record.scaleId || 'WB-01'} Certified</span></td>
+                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale ${esc(record.scaleId || 'WB-01')} Certified</span></td>
               </tr>
               <tr>
                 <td><strong>2. Tare Weight (Empty Vehicle)</strong></td>
                 <td>${record.tareTime || '—'}</td>
                 <td><strong style="font-family: var(--font-mono); font-size: 1.05rem;">${tare.toFixed(2)} Qtl</strong></td>
-                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale ${record.scaleId || 'WB-01'} Certified</span></td>
+                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale ${esc(record.scaleId || 'WB-01')} Certified</span></td>
               </tr>
               <tr style="background: #f0fdf4;">
                 <td><strong style="color: var(--color-primary-dark); font-size: 1rem;">3. CERTIFIED NET CROP QUANTITY</strong></td>
@@ -910,7 +938,7 @@
           <div class="slip-financial-box">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem;">
               <span>Government MSP Rate: <strong>₹${rate.toLocaleString("en-IN")} / Qtl</strong>${record.deductionRate > 0 ? ` <span style="font-size: 0.75rem; color: #64748b;">(after ₹${record.deductionRate} / Qtl moisture deduction)</span>` : ''}</span>
-              <span>Quality Grade: <strong style="color: #16a34a;">${record.qcGrade} (Moisture: ${record.moisturePct != null ? record.moisturePct + '%' : '—'})</strong></span>
+              <span>Quality Grade: <strong style="color: #16a34a;">${esc(record.qcGrade)} (Moisture: ${record.moisturePct != null ? record.moisturePct + '%' : '—'})</strong></span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.15rem; font-weight: 800; color: var(--color-primary-dark); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--color-primary-border);">
               <span>TOTAL CERTIFIED MSP DIRECT BENEFIT TRANSFER:</span>
