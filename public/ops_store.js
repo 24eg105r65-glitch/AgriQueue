@@ -112,13 +112,13 @@
 
   // Bookings that have not reached the gate yet
   const EXPECTED_SEEDS = [
-    { tokenId: 'TK-1053', farmerId: 'FAR-2026-6710', farmerName: 'Harjinder Singh', farmerMobile: '9876543221', village: 'Nilokheri, Karnal',
+    { tokenId: 'TK-1053', land: '5.5 Acres', farmerId: 'FAR-2026-6710', farmerName: 'Harjinder Singh', farmerMobile: '9876543221', village: 'Nilokheri, Karnal',
       cropKey: 'wheat', estimatedQty: 45.0, vehicleNo: 'HR-05-C-3321', slotTime: 'Today 10:00 AM - 11:00 AM' },
-    { tokenId: 'TK-1056', farmerId: 'FAR-2026-6788', farmerName: 'Mohan Lal', farmerMobile: '9876543222', village: 'Indri, Karnal',
+    { tokenId: 'TK-1056', land: '7.0 Acres', farmerId: 'FAR-2026-6788', farmerName: 'Mohan Lal', farmerMobile: '9876543222', village: 'Indri, Karnal',
       cropKey: 'paddy_a', estimatedQty: 65.0, vehicleNo: 'HR-06-T-2210', slotTime: 'Today 10:00 AM - 11:00 AM' },
-    { tokenId: 'TK-1059', farmerId: 'FAR-2026-6802', farmerName: 'Suresh Kumar', farmerMobile: '9876543223', village: 'Taraori, Karnal',
+    { tokenId: 'TK-1059', land: '3.5 Acres', farmerId: 'FAR-2026-6802', farmerName: 'Suresh Kumar', farmerMobile: '9876543223', village: 'Taraori, Karnal',
       cropKey: 'mustard', estimatedQty: 28.0, vehicleNo: 'HR-05-K-7781', slotTime: 'Today 11:00 AM - 12:00 PM' },
-    { tokenId: 'TK-1062', farmerId: 'FAR-2026-6851', farmerName: 'Anil Kumar', farmerMobile: '9876543224', village: 'Gharaunda, Karnal',
+    { tokenId: 'TK-1062', land: '9.0 Acres', farmerId: 'FAR-2026-6851', farmerName: 'Anil Kumar', farmerMobile: '9876543224', village: 'Gharaunda, Karnal',
       cropKey: 'chana', estimatedQty: 40.0, vehicleNo: 'HR-05-M-4410', slotTime: 'Today 11:00 AM - 12:00 PM' }
   ];
 
@@ -273,7 +273,7 @@
       SEED_TROLLEYS.forEach((t) => {
         entries[t.tokenId] = {
           hubId: GATE_HUB_ID, vehicleNo: t.vehicleNo, lane: t.lane, gateInAt: now - t.minsAgo * 60000, operator: OPERATOR_ID,
-          farmer: { farmerId: t.farmerId, farmerName: t.farmerName, farmerMobile: t.farmerMobile, village: t.village },
+          farmer: { farmerId: t.farmerId, farmerName: t.farmerName, farmerMobile: t.farmerMobile, village: t.village, land: t.land },
           cropKey: t.cropKey, estimatedQty: t.estimatedQty, slotTime: 'Today 09:00 AM - 10:00 AM', bookedHubId: GATE_HUB_ID
         };
       });
@@ -281,7 +281,7 @@
         const lane = w.lane === 1 ? 'Lane 1 (North Weighbridge)' : 'Lane 2 (East Weighbridge)';
         entries[w.tokenId] = {
           hubId: GATE_HUB_ID, vehicleNo: w.vehicleNo, lane, gateInAt: now - w.gateMins * 60000, operator: OPERATOR_ID, seeded: true,
-          farmer: { farmerId: `FAR-2026-${4100 + i * 13}`, farmerName: w.name, farmerMobile: `98765432${30 + i}`, village: w.village },
+          farmer: { farmerId: `FAR-2026-${4100 + i * 13}`, farmerName: w.name, farmerMobile: `98765432${30 + i}`, village: w.village, land: `${(3 + (i * 7) % 9) + 0.5} Acres` },
           cropKey: w.cropKey, estimatedQty: w.est, slotTime: 'Today 08:00 AM - 09:00 AM', bookedHubId: GATE_HUB_ID,
           weighment: { gross: w.gross, tare: w.tare, net: round2(w.gross - w.tare), scaleId: scaleIdFor(lane), at: now - w.weighMins * 60000 }
         };
@@ -350,14 +350,14 @@
 
     function resolveFarmer(q, entry, exp) {
       if (q && q.farmerName) {
-        return { farmerId: q.farmerId, farmerName: q.farmerName, farmerMobile: q.farmerMobile, village: q.village };
+        return { farmerId: q.farmerId, farmerName: q.farmerName, farmerMobile: q.farmerMobile, village: q.village, land: q.land };
       }
       if (entry && entry.farmer) return entry.farmer;
-      if (exp) return { farmerId: exp.farmerId, farmerName: exp.farmerName, farmerMobile: exp.farmerMobile, village: exp.village };
+      if (exp) return { farmerId: exp.farmerId, farmerName: exp.farmerName, farmerMobile: exp.farmerMobile, village: exp.village, land: exp.land };
       // Portal bookings carry no identity: use the logged-in farmer, else the portal's default profile
       const u = readAuthUser();
-      if (u && u.name) return { farmerId: u.id, farmerName: u.name, farmerMobile: u.phone, village: u.village };
-      return { farmerId: 'FAR-2026-8812', farmerName: 'Ramesh Chand', farmerMobile: '9876543212', village: 'Nilokheri (Karnal)' };
+      if (u && u.name) return { farmerId: u.id, farmerName: u.name, farmerMobile: u.phone, village: u.village, land: u.land };
+      return { farmerId: 'FAR-2026-8812', farmerName: 'Ramesh Chand', farmerMobile: '9876543212', village: 'Nilokheri (Karnal)', land: '4.5 Acres' };
     }
 
     function guessCropKey(label) {
@@ -421,6 +421,7 @@
           farmerName: farmer.farmerName,
           farmerMobile: farmer.farmerMobile,
           village: farmer.village,
+          land: farmer.land || '—',
           cropKey,
           cropName: CROPS[cropKey].name,
           estimatedQty,
@@ -429,6 +430,7 @@
           slotTime: (exp && exp.slotTime) || (entry && entry.slotTime) || (b && b.slot) || '—',
           vehicleNo: (entry && entry.vehicleNo) || (q && q.vehicleNo) || (b && b.vehicleNo) || (exp && exp.vehicleNo) || '',
           lane: (entry && entry.lane) || (q && q.assignedLane) || null,
+          entryGate: (entry && entry.entryGate) || null,
           status,
           qcOutcome: tested ? qcStatus : null,
           statusTimeline: {
@@ -450,7 +452,9 @@
             grossWeightQtl: weighment.gross,
             tareWeightQtl: weighment.tare,
             netWeightQtl: weighment.net,
-            scaleId: weighment.scaleId
+            scaleId: weighment.scaleId,
+            grossAt: weighment.grossAt || null,
+            tareAt: weighment.tareAt || weighment.at || null
           } : null,
           weighing: (entry && entry.weighing) || null,
           financials: {
@@ -478,6 +482,19 @@
     function getToken(tokenId) {
       const id = String(tokenId || '').trim().toUpperCase();
       return getTokens().find((t) => t.tokenId.toUpperCase() === id) || null;
+    }
+
+    // Look a trolley up by token, vehicle plate, farmer name or mobile (exact token / plate matches first)
+    function findTokens(query) {
+      const q = String(query || '').trim().toUpperCase();
+      if (!q) return [];
+      const exact = [];
+      const partial = [];
+      getTokens().forEach((t) => {
+        if (t.tokenId.toUpperCase() === q || (t.vehicleNo && t.vehicleNo.toUpperCase() === q)) exact.push(t);
+        else if (t.farmerName.toUpperCase().includes(q) || String(t.farmerMobile || '').includes(q)) partial.push(t);
+      });
+      return exact.concat(partial);
     }
 
     // ----- Gate & weighbridge actions -----
@@ -509,7 +526,7 @@
       const tk = getToken(tokenId);
       if (!tk) return { ok: false, error: 'Token not found' };
       if (tk.status !== 'BOOKED') return { ok: false, error: `Token ${tk.tokenId} is already ${STAGE_LABEL[tk.status].toLowerCase()}` };
-      const vehicleNo = String((o && o.vehicleNo) || '').trim().toUpperCase();
+      const vehicleNo = String((o && o.vehicleNo) || tk.vehicleNo || '').trim().toUpperCase();
       if (!vehicleNo) return { ok: false, error: 'Enter the vehicle / trolley registration number' };
       const lane = o && o.lane;
       const hubId = (o && o.hubId) || GATE_HUB_ID;
@@ -519,7 +536,8 @@
       const gate = getGateState();
       gate.entries[tk.tokenId] = {
         hubId, vehicleNo, lane, gateInAt: now, operator: OPERATOR_ID,
-        farmer: { farmerId: tk.farmerId, farmerName: tk.farmerName, farmerMobile: tk.farmerMobile, village: tk.village },
+        farmer: { farmerId: tk.farmerId, farmerName: tk.farmerName, farmerMobile: tk.farmerMobile, village: tk.village, land: tk.land },
+        entryGate: (o && o.entryGate) || null,
         cropKey: tk.cropKey, estimatedQty: tk.estimatedQty, slotTime: tk.slotTime, bookedHubId: tk.hubId
       };
       gate.expected = gate.expected.filter((e) => e.tokenId !== tk.tokenId);
@@ -527,7 +545,7 @@
 
       appendQcSample({
         tokenId: tk.tokenId, farmerId: tk.farmerId, farmerName: tk.farmerName, farmerMobile: tk.farmerMobile,
-        village: tk.village, land: '—', cropKey: tk.cropKey, cropName: tk.cropName, estimatedQty: tk.estimatedQty,
+        village: tk.village, land: tk.land, cropKey: tk.cropKey, cropName: tk.cropName, estimatedQty: tk.estimatedQty,
         vehicleNo, arrivedTime: fmtTime(now), hubName: (centreById(hubId) || centreById(GATE_HUB_ID)).short,
         status: 'PENDING', testedMoisture: null, testedForeignMatter: null, testedDamagedGrain: null,
         assignedLane: lane, timestamp: now
@@ -547,7 +565,10 @@
       const gate = getGateState();
       const entry = gate.entries[tokenId];
       if (!entry) return false;
-      entry.weighing = Object.assign({}, entry.weighing, partial);
+      const stamps = {};
+      if (partial.gross !== undefined) stamps.grossAt = nowFn();
+      if (partial.tare !== undefined) stamps.tareAt = nowFn();
+      entry.weighing = Object.assign({}, entry.weighing, partial, stamps);
       saveGateState(gate);
       return true;
     }
@@ -556,8 +577,11 @@
       const tk = getToken(tokenId);
       const ready = weighReadiness(tk);
       if (!ready.ok) return { ok: false, error: ready.reason };
-      const gross = Number(o && o.gross);
-      const tare = Number(o && o.tare);
+      const gate0 = getGateState();
+      const saved = (gate0.entries[tk.tokenId] && gate0.entries[tk.tokenId].weighing) || {};
+      const gross = Number(o && o.gross != null ? o.gross : saved.gross);
+      const tare = Number(o && o.tare != null ? o.tare : saved.tare);
+      if (!gate0.entries[tk.tokenId]) return { ok: false, error: 'No gate entry for this token — check the trolley in first' };
       if (!(gross > 0) || !(tare >= 0)) return { ok: false, error: 'Capture both the gross and tare weights first' };
       if (gross <= tare) return { ok: false, error: 'Gross weight must be greater than tare weight' };
 
@@ -565,7 +589,7 @@
       const gate = getGateState();
       const entry = gate.entries[tk.tokenId];
       const net = round2(gross - tare);
-      entry.weighment = { gross: round2(gross), tare: round2(tare), net, scaleId: scaleIdFor(entry.lane), at: now };
+      entry.weighment = { gross: round2(gross), tare: round2(tare), net, scaleId: scaleIdFor(entry.lane), at: now, grossAt: saved.grossAt || now, tareAt: saved.tareAt || now };
       delete entry.weighing;
       saveGateState(gate);
 
@@ -616,7 +640,7 @@
       readQcSamples, writeQcSamples, appendQcSample,
       getGateState, saveGateState, saveWeighing,
       getAdminState, saveAdminState, countersFor, setCounterOpen,
-      getTokens, getToken, pickLane, weighReadiness, checkIn, recordWeighment,
+      getTokens, getToken, findTokens, pickLane, weighReadiness, checkIn, recordWeighment,
       simulateSurge, clearSimulated,
       now: nowFn
     };
