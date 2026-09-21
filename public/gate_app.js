@@ -1,164 +1,89 @@
 /**
  * AgriQueue: Gate Entry & Electronic Weighbridge Module (SIH26032)
  * Module 2: QR Token Scanner, Vehicle Intake, Gross/Tare Scales & Weight Slip Generator
+ *
+ * Data layer: AgriQueueStore (ops_store.js), shared with the Farmer portal, the Quality Lab and the
+ * Mandi Admin. This page is a view over the store: bookings made on the farmer portal appear here,
+ * weighing waits for the Quality Lab decision, lanes closed by the Mandi Secretary are not offered,
+ * and check-ins / weighments are visible to the admin dashboard.
  */
 
 (function () {
   'use strict';
 
-  // Seed Gate Records & Trolley Queue
-  const INITIAL_GATE_RECORDS = [
-    {
-      tokenId: "TK-1042",
-      farmerId: "FAR-2026-8812",
-      farmerName: "Ramesh Chand",
-      farmerMobile: "9876543212",
-      village: "Nilokheri, Karnal",
-      land: "4.5 Acres",
-      cropKey: "paddy_a",
-      cropName: "Paddy (Grade A)",
-      estimatedQty: 50.0,
-      vehicleNo: "HR-05-T-9812",
-      driverName: "Ramesh Chand",
-      slotTime: "Today 10:00 AM - 11:00 AM",
-      hubName: "Karnal Central Procurement Hub",
-      status: "IN_LAB", // SCHEDULED, GATE_CHECKED_IN, IN_LAB, GROSS_WEIGHED, TARE_WEIGHED, COMPLETED
-      gateInTime: "09:12 AM",
-      gateLane: "Gate 1 (North Entrance)",
-      weighbridgeScale: "WB-01 (Electronic 60T Platform)",
-      grossWeight: 58.20,
-      tareWeight: null,
-      netWeight: null,
-      grossTime: "09:18 AM",
-      tareTime: null,
-      moisturePct: 11.8,
-      qcGrade: "Grade A",
-      baseMsp: 2300,
-      deductionRate: 0,
-      totalAmount: 115000,
-      timestamp: Date.now() - 25 * 60 * 1000
-    },
-    {
-      tokenId: "TK-1045",
-      farmerId: "FAR-2026-9044",
-      farmerName: "Gurpreet Singh",
-      farmerMobile: "9876543210",
-      village: "Gharaunda, Karnal",
-      land: "8.0 Acres",
-      cropKey: "wheat",
-      cropName: "Wheat (FAQ Sharbati)",
-      estimatedQty: 75.0,
-      vehicleNo: "PB-11-F-4410",
-      driverName: "Gurpreet Singh",
-      slotTime: "Today 10:00 AM - 11:00 AM",
-      hubName: "Karnal Central Procurement Hub",
-      status: "GATE_CHECKED_IN",
-      gateInTime: "09:25 AM",
-      gateLane: "Gate 2 (East Entrance)",
-      weighbridgeScale: "WB-02 (Electronic 80T Platform)",
-      grossWeight: null,
-      tareWeight: null,
-      netWeight: null,
-      grossTime: null,
-      tareTime: null,
-      moisturePct: null,
-      qcGrade: "Pending QC",
-      baseMsp: 2275,
-      deductionRate: 0,
-      totalAmount: null,
-      timestamp: Date.now() - 18 * 60 * 1000
-    },
-    {
-      tokenId: "TK-1048",
-      farmerId: "FAR-2026-7731",
-      farmerName: "Jagdish Prasad",
-      farmerMobile: "9876543211",
-      village: "Taraori, Karnal",
-      land: "6.2 Acres",
-      cropKey: "mustard",
-      cropName: "Mustard (Sarson)",
-      estimatedQty: 35.0,
-      vehicleNo: "HR-06-K-1029",
-      driverName: "Jagdish Prasad",
-      slotTime: "Today 11:00 AM - 12:00 PM",
-      hubName: "Karnal Central Procurement Hub",
-      status: "SCHEDULED",
-      gateInTime: null,
-      gateLane: "Gate 1 (North Entrance)",
-      weighbridgeScale: "WB-01 (Electronic 60T Platform)",
-      grossWeight: null,
-      tareWeight: null,
-      netWeight: null,
-      grossTime: null,
-      tareTime: null,
-      moisturePct: null,
-      qcGrade: "Pending Gate Entry",
-      baseMsp: 5650,
-      deductionRate: 0,
-      totalAmount: null,
-      timestamp: Date.now() - 5 * 60 * 1000
-    },
-    {
-      tokenId: "TK-1051",
-      farmerId: "FAR-2026-6629",
-      farmerName: "Rajeshwar Rao",
-      farmerMobile: "9876543215",
-      village: "Indri, Karnal",
-      land: "5.0 Acres",
-      cropKey: "maize",
-      cropName: "Maize (Hybrid)",
-      estimatedQty: 90.0,
-      vehicleNo: "HR-05-M-5520",
-      driverName: "Rajeshwar Rao",
-      slotTime: "Today 11:00 AM - 12:00 PM",
-      hubName: "Karnal Central Procurement Hub",
-      status: "SCHEDULED",
-      gateInTime: null,
-      gateLane: "Gate 2 (East Entrance)",
-      weighbridgeScale: "WB-02 (Electronic 80T Platform)",
-      grossWeight: null,
-      tareWeight: null,
-      netWeight: null,
-      grossTime: null,
-      tareTime: null,
-      moisturePct: null,
-      qcGrade: "Pending Gate Entry",
-      baseMsp: 2090,
-      deductionRate: 0,
-      totalAmount: null,
-      timestamp: Date.now() - 2 * 60 * 1000
-    },
-    {
-      tokenId: "TK-0988",
-      farmerId: "FAR-2026-5120",
-      farmerName: "Baldev Singh",
-      farmerMobile: "9876543219",
-      village: "Assandh, Karnal",
-      land: "12.0 Acres",
-      cropKey: "wheat",
-      cropName: "Wheat (FAQ Sharbati)",
-      estimatedQty: 60.0,
-      vehicleNo: "HR-05-AB-9102",
-      driverName: "Baldev Singh",
-      slotTime: "Yesterday 08:30 AM",
-      hubName: "Karnal Central Procurement Hub",
-      status: "COMPLETED",
-      gateInTime: "08:40 AM",
-      gateLane: "Gate 1 (North Entrance)",
-      weighbridgeScale: "WB-01 (Electronic 60T Platform)",
-      grossWeight: 69.20,
-      tareWeight: 9.20,
-      netWeight: 60.00,
-      grossTime: "08:48 AM",
-      tareTime: "09:32 AM",
-      moisturePct: 10.4,
-      qcGrade: "Grade A",
-      baseMsp: 2275,
-      deductionRate: 0,
-      totalAmount: 136500,
-      timestamp: Date.now() - 60 * 60 * 1000
-    }
-  ];
+  const store = window.AgriQueueStore;
+  const HUB = store.GATE_HUB_ID;
+
+  const SCALE_LABEL = { 1: 'WB-01 (Electronic 60T Platform)', 2: 'WB-02 (Electronic 80T Platform)' };
+
+  function laneNumber(text) {
+    const m = /(?:WB-0|Lane\s*)(\d+)/i.exec(text || '');
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  function scaleLabelFor(lane) {
+    const n = laneNumber(lane);
+    return SCALE_LABEL[n] || `WB-0${n || 1} (Electronic Platform)`;
+  }
+
+  // The weighbridge counter (managed by the Mandi Secretary) behind a scale option
+  function laneForScale(scaleValue) {
+    const n = laneNumber(scaleValue);
+    return store.countersFor(HUB).find(c => c.type === 'weigh' && laneNumber(c.name) === n) || null;
+  }
+
+  const fmt = (ts) => (ts ? store.fmtTime(ts) : null);
+
+  // Store token -> the record shape this page's UI has always read
+  function toRecord(t) {
+    const w = t.weighmentReport;
+    const part = t.weighing || {};
+    const ready = store.weighReadiness(t);
+    let status = 'SCHEDULED';
+    if (t.status === 'WEIGHMENT_COMPLETED') status = 'COMPLETED';
+    else if (t.status !== 'BOOKED') status = part.gross > 0 ? 'GROSS_WEIGHED' : 'GATE_CHECKED_IN';
+
+    const base = store.CROPS[t.cropKey].msp;
+    return {
+      tokenId: t.tokenId,
+      farmerId: t.farmerId,
+      farmerName: t.farmerName,
+      farmerMobile: t.farmerMobile,
+      village: t.village,
+      land: t.land,
+      cropKey: t.cropKey,
+      cropName: t.cropName,
+      estimatedQty: t.estimatedQty,
+      vehicleNo: t.vehicleNo || 'Not recorded',
+      hasVehicle: !!t.vehicleNo,
+      slotTime: t.slotTime,
+      hubId: t.hubId,
+      hubName: t.hubName,
+      status,
+      ready,                                   // { ok, reason } from the Quality Lab decision
+      rejected: t.qcOutcome === 'REJECTED',
+      gateInTime: fmt(t.statusTimeline.gateInAt),
+      gateLane: t.entryGate || (t.status !== 'BOOKED' ? 'Gate 1 (North Entrance)' : null),
+      weighbridgeScale: t.lane ? scaleLabelFor(t.lane) : null,
+      scaleId: w ? w.scaleId : (t.lane ? store.scaleIdFor(t.lane) : null),
+      grossWeight: w ? w.grossWeightQtl : (part.gross != null ? part.gross : null),
+      tareWeight: w ? w.tareWeightQtl : (part.tare != null ? part.tare : null),
+      netWeight: w ? w.netWeightQtl : null,
+      grossTime: fmt(w ? w.grossAt : part.grossAt),
+      tareTime: fmt(w ? w.tareAt : part.tareAt),
+      moisturePct: t.qualityReport ? t.qualityReport.moisturePct : null,
+      qcGrade: t.qualityReport ? t.qualityReport.grade : 'Pending QC',
+      baseMsp: base,
+      deductionRate: Math.max(0, base - t.financials.mspPerQtl),   // Grade B moisture deduction from the Quality Lab
+      totalAmount: w ? Math.round(w.netWeightQtl * t.financials.mspPerQtl) : null,
+      weighedToday: t.weighedToday
+    };
+  }
+
+  function getRecord(tokenId) {
+    const t = tokenId ? store.getToken(tokenId) : null;
+    return t ? toRecord(t) : null;
+  }
 
   // State
   let gateRecords = [];
@@ -167,13 +92,14 @@
   let searchTerm = '';
   let scaleMode = 'GROSS'; // 'GROSS' or 'TARE'
   let isScanningCamera = false;
+  let weighLock = null; // reason text while the selected trolley cannot be weighed yet
 
   // DOM Elements cache
   const el = {};
 
   function init() {
     cacheDom();
-    loadGateRecords();
+    refreshRecords();
     attachEvents();
     startLiveClock();
     renderQueue();
@@ -181,6 +107,7 @@
       selectRecord(gateRecords[0].tokenId);
     }
     updateTopMetrics();
+    store.onChange(onExternalChange);
   }
 
   function cacheDom() {
@@ -249,24 +176,43 @@
     el.btnPrintSlip = document.getElementById("btn-print-weight-slip");
   }
 
-  function loadGateRecords() {
-    const raw = localStorage.getItem("agriqueue_gate_records");
-    if (raw) {
-      try {
-        gateRecords = JSON.parse(raw);
-      } catch (e) {
-        gateRecords = INITIAL_GATE_RECORDS;
-      }
-    } else {
-      gateRecords = INITIAL_GATE_RECORDS;
-      saveGateRecords();
-    }
+  // Vehicles of this hub, most actionable first: ready to weigh, in lab, scheduled, rejected, completed
+  const RANK = { GROSS_WEIGHED: 0, READY: 1, LAB: 2, SCHEDULED: 3, REJECTED: 4, COMPLETED: 5 };
+  function rankOf(r) {
+    if (r.status === 'GATE_CHECKED_IN') return r.rejected ? RANK.REJECTED : (r.ready.ok ? RANK.READY : RANK.LAB);
+    return RANK[r.status];
   }
 
-  function saveGateRecords() {
-    localStorage.setItem("agriqueue_gate_records", JSON.stringify(gateRecords));
-    updateTopMetrics();
+  function refreshRecords() {
+    // Simulated trolleys (Module 4 surge demo) are admin-only and never appear at the gate desk
+    gateRecords = store.getTokens()
+      .filter(t => t.hubId === HUB && !t.simulated)
+      .map(toRecord)
+      .sort((a, b) => (rankOf(a) - rankOf(b)) || a.tokenId.localeCompare(b.tokenId));
+    relabelQuickScans();
   }
+
+  // The four quick-scan buttons point at the next vehicles still to arrive (farmer-booked ones first)
+  function nextScheduled() {
+    const booked = {};
+    store.readBatches().forEach(b => { booked[b.token] = true; });
+    return gateRecords.filter(r => r.status === 'SCHEDULED')
+      .sort((a, b) => (booked[a.tokenId] ? 0 : 1) - (booked[b.tokenId] ? 0 : 1));
+  }
+
+  function relabelQuickScans() {
+    if (!el.quickScanPresets) return;
+    const next = nextScheduled();
+    el.quickScanPresets.forEach((btn, i) => {
+      const r = next[i];
+      btn.style.display = r ? "" : "none";
+      if (!r) return;
+      btn.dataset.token = r.tokenId;
+      btn.textContent = `${r.tokenId} (${r.farmerName.split(' ')[0]})`;
+    });
+  }
+
+
 
   function attachEvents() {
     // Search & Filter
@@ -402,12 +348,7 @@
   }
 
   function lookupAndSelect(query) {
-    const matched = gateRecords.find(r => 
-      r.tokenId.toUpperCase() === query || 
-      r.vehicleNo.toUpperCase() === query || 
-      r.farmerName.toUpperCase().includes(query) ||
-      r.farmerMobile.includes(query)
-    );
+    const matched = store.findTokens(query)[0];
 
     if (matched) {
       playBeep(980, 0.15);
@@ -428,12 +369,24 @@
       // Simulate automatic QR detection after 1.8 seconds
       setTimeout(() => {
         if (isScanningCamera) {
-          const randomPending = gateRecords.find(r => r.status === 'SCHEDULED') || gateRecords[0];
-          lookupAndSelect(randomPending.tokenId);
+          const randomPending = nextScheduled()[0] || gateRecords[0];
+          if (randomPending) lookupAndSelect(randomPending.tokenId);
           toggleCameraScan();
         }
       }, 1800);
     }
+  }
+
+  // Badge class + text for a vehicle (Quality Lab outcome shown while it is inside the yard)
+  function statusText(r) {
+    if (r.status === 'SCHEDULED') return { cls: 'badge-scheduled', short: '⏳ Awaiting Gate Entry', long: 'Awaiting Gate Entry' };
+    if (r.status === 'GATE_CHECKED_IN') {
+      if (r.rejected) return { cls: 'badge-weighing', short: '⛔ Quality Rejected', long: 'Quality Rejected • Not Weighable' };
+      if (r.ready.ok) return { cls: 'badge-pass', short: '✅ Ready to Weigh', long: 'Quality Cleared • Ready to Weigh' };
+      return { cls: 'badge-lab', short: '🔬 In Quality Lab', long: 'Inside Yard (In Quality Lab)' };
+    }
+    if (r.status === 'GROSS_WEIGHED') return { cls: 'badge-weighing', short: `⚖️ Gross Weighed (${r.grossWeight} Q)`, long: `Gross Weighed (${r.grossWeight} Qtl)` };
+    return { cls: 'badge-pass', short: `✓ Net: ${r.netWeight} Qtl`, long: `Weighment Certified (Net: ${r.netWeight} Qtl)` };
   }
 
   function getFilteredQueue() {
@@ -448,7 +401,7 @@
 
       if (activeFilter === 'ALL') return true;
       if (activeFilter === 'SCHEDULED') return r.status === 'SCHEDULED';
-      if (activeFilter === 'IN_LAB') return r.status === 'GATE_CHECKED_IN' || r.status === 'IN_LAB';
+      if (activeFilter === 'IN_LAB') return r.status === 'GATE_CHECKED_IN';
       if (activeFilter === 'WEIGHING') return r.status === 'GROSS_WEIGHED';
       if (activeFilter === 'COMPLETED') return r.status === 'COMPLETED';
       return true;
@@ -474,17 +427,8 @@
 
     el.queueList.innerHTML = filtered.map(r => {
       const isSelected = r.tokenId === currentRecordId;
-      let statusBadge = '';
-      
-      if (r.status === 'SCHEDULED') {
-        statusBadge = `<span class="gate-badge badge-scheduled">⏳ Awaiting Gate Entry</span>`;
-      } else if (r.status === 'GATE_CHECKED_IN' || r.status === 'IN_LAB') {
-        statusBadge = `<span class="gate-badge badge-lab">🔬 In Quality Lab</span>`;
-      } else if (r.status === 'GROSS_WEIGHED') {
-        statusBadge = `<span class="gate-badge badge-weighing">⚖️ Gross Weighed (${r.grossWeight} Q)</span>`;
-      } else if (r.status === 'COMPLETED') {
-        statusBadge = `<span class="gate-badge badge-pass">✓ Net: ${r.netWeight} Qtl</span>`;
-      }
+      const st = statusText(r);
+      const statusBadge = `<span class="gate-badge ${st.cls}">${st.short}</span>`;
 
       return `
         <div class="gate-queue-card ${isSelected ? 'active' : ''}" data-token="${r.tokenId}">
@@ -513,9 +457,10 @@
     });
   }
 
-  function selectRecord(tokenId) {
+  function selectRecord(tokenId, opts) {
+    const keepInputs = !!(opts && opts.keepInputs);
     currentRecordId = tokenId;
-    const record = gateRecords.find(r => r.tokenId === tokenId);
+    const record = getRecord(tokenId);
     if (!record) return;
 
     renderQueue();
@@ -530,28 +475,26 @@
 
     // Status Badge
     if (el.statusBadge) {
-      if (record.status === 'SCHEDULED') {
-        el.statusBadge.className = "gate-badge badge-scheduled";
-        el.statusBadge.textContent = "Awaiting Gate Entry";
-      } else if (record.status === 'GATE_CHECKED_IN' || record.status === 'IN_LAB') {
-        el.statusBadge.className = "gate-badge badge-lab";
-        el.statusBadge.textContent = "Inside Yard (In Quality Lab)";
-      } else if (record.status === 'GROSS_WEIGHED') {
-        el.statusBadge.className = "gate-badge badge-weighing";
-        el.statusBadge.textContent = `Gross Weighed (${record.grossWeight} Qtl)`;
-      } else if (record.status === 'COMPLETED') {
-        el.statusBadge.className = "gate-badge badge-pass";
-        el.statusBadge.textContent = `Weighment Certified (Net: ${record.netWeight} Qtl)`;
-      }
+      const st = statusText(record);
+      el.statusBadge.className = "gate-badge " + st.cls;
+      el.statusBadge.textContent = st.long;
     }
 
     // Toggle Check-in controls visibility
     if (el.checkinCard) {
       el.checkinCard.style.display = (record.status === 'SCHEDULED') ? "block" : "none";
     }
+    applyScaleOptions(keepInputs);
 
-    // Setup scale mode and default values
-    if (record.status === 'SCHEDULED' || record.status === 'GATE_CHECKED_IN' || record.status === 'IN_LAB') {
+    // The Quality Lab decision gates the weighbridge
+    weighLock = weighLockFor(record);
+    if (el.btnCaptureScale) el.btnCaptureScale.disabled = !!weighLock;
+
+    if (keepInputs) {
+      // Something else changed (e.g. the QC result arrived): keep what the operator is typing
+      updateScaleDisplay(parseFloat(el.scaleWeightInput.value) || 0);
+    } else if (record.status === 'SCHEDULED' || record.status === 'GATE_CHECKED_IN') {
+      // Setup scale mode and default values
       setScaleMode('GROSS');
       const defGross = record.grossWeight || (record.estimatedQty + 8.20);
       updateScaleInputs(defGross);
@@ -567,6 +510,52 @@
     recalculateWeighment();
   }
 
+  // Short reason shown on the scale while weighing is locked (null = weighing allowed)
+  function weighLockFor(record) {
+    if (record.status === 'COMPLETED') return null;
+    if (record.status === 'SCHEDULED') return 'Check-in required first';
+    if (!record.ready.ok) return record.rejected ? 'Quality rejected' : 'Awaiting quality test';
+    return null;
+  }
+
+  // Refuses a weighing action (with the reason) until the trolley is checked in and passed by the Quality Lab
+  function ensureWeighable(record) {
+    if (!record) return false;
+    if (record.status === 'COMPLETED') return false;
+    if (record.status === 'SCHEDULED') {
+      alert("Please confirm gate-in for this vehicle first.");
+      return false;
+    }
+    if (!record.ready.ok) {
+      alert(`⛔ Weighing blocked: ${record.ready.reason}.`);
+      return false;
+    }
+    return true;
+  }
+
+  // Offer only the scales whose weighbridge lane the Mandi Secretary has left open
+  function applyScaleOptions(keepChoice) {
+    if (!el.scaleSelect) return;
+    const previous = keepChoice ? el.scaleSelect.value : null;
+    const auto = store.pickLane(HUB);
+    let firstOpen = null;
+    let autoOption = null;
+    let previousOk = false;
+
+    Array.from(el.scaleSelect.options).forEach(opt => {
+      const lane = laneForScale(opt.value);
+      const open = !!(lane && lane.open);
+      opt.disabled = !open;
+      opt.textContent = opt.value + (open ? "" : " — closed by admin");
+      if (open && !firstOpen) firstOpen = opt.value;
+      if (open && lane.name === auto) autoOption = opt.value;
+      if (open && opt.value === previous) previousOk = true;
+    });
+
+    const choice = previousOk ? previous : (autoOption || firstOpen);
+    if (choice) el.scaleSelect.value = choice;
+  }
+
   function setScaleMode(mode) {
     scaleMode = mode;
     if (el.btnModeGross) {
@@ -576,7 +565,7 @@
       el.btnModeTare.classList.toggle("active", mode === 'TARE');
     }
 
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
+    const record = getRecord(currentRecordId);
     if (!record) return;
 
     if (mode === 'GROSS') {
@@ -605,7 +594,10 @@
       el.scaleDisplayVal.textContent = val.toFixed(2);
     }
     if (el.scaleStatusPill) {
-      if (scaleMode === 'GROSS') {
+      if (weighLock) {
+        el.scaleStatusPill.className = "scale-pill scale-pill-tare";
+        el.scaleStatusPill.textContent = `⛔ WEIGHING LOCKED • ${weighLock.toUpperCase()}`;
+      } else if (scaleMode === 'GROSS') {
         el.scaleStatusPill.className = "scale-pill scale-pill-gross";
         el.scaleStatusPill.textContent = "⚖️ GROSS WEIGHT (LOADED VEHICLE)";
       } else {
@@ -616,8 +608,9 @@
   }
 
   function runWeighbridgeSensorSimulation() {
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
+    const record = getRecord(currentRecordId);
     if (!record || !el.btnCaptureScale) return;
+    if (!ensureWeighable(record)) return;
 
     el.btnCaptureScale.disabled = true;
     el.btnCaptureScale.innerHTML = `<span class="material-symbols-outlined spin-animation" style="font-size: 1.1rem; vertical-align: middle;">sync</span> Weighbridge Platform Stabilizing...`;
@@ -646,45 +639,67 @@
   }
 
   function confirmGateInCheckin() {
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
-    if (!record) return;
+    const record = getRecord(currentRecordId);
+    if (!record || record.status !== 'SCHEDULED') return;
 
-    const nowTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    record.gateInTime = nowTime;
-    record.gateLane = el.gateLaneSelect ? el.gateLaneSelect.value : "Gate 1 (North Entrance)";
-    record.weighbridgeScale = el.scaleSelect ? el.scaleSelect.value : "WB-01 (Electronic 60T Platform)";
-    record.status = "GATE_CHECKED_IN";
+    const lane = laneForScale(el.scaleSelect ? el.scaleSelect.value : "");
+    if (!lane || !lane.open) {
+      alert("⛔ No open weighbridge lane for that scale. Ask the Mandi Secretary to open one.");
+      return;
+    }
+    if (record.hubId && record.hubId !== HUB && !confirm(`This token was booked for ${record.hubName}, not ${store.centreById(HUB).short}. Check it in here anyway?`)) {
+      return;
+    }
 
-    saveGateRecords();
-    syncWithQCAndFarmer(record, "GATE_CHECKED_IN");
-    renderQueue();
+    // The farmer's booking normally carries the plate; ask only when an older booking has none
+    let vehicleNo;
+    if (!record.hasVehicle) {
+      vehicleNo = (window.prompt(`Vehicle / trolley number for ${record.tokenId}:`) || "").trim();
+      if (!vehicleNo) return;
+    }
+
+    const res = store.checkIn(record.tokenId, {
+      vehicleNo,
+      lane: lane.name,
+      entryGate: el.gateLaneSelect ? el.gateLaneSelect.value : null,
+      hubId: HUB
+    });
+    if (!res.ok) {
+      alert(`⛔ ${res.error}.`);
+      return;
+    }
+
+    refreshRecords();
     selectRecord(record.tokenId);
+    updateTopMetrics();
 
-    announceGateEvent(`Token ${record.tokenId}, vehicle ${record.vehicleNo} checked in at ${record.gateLane}. Proceed to Quality Lab Counter 2 for moisture testing.`);
+    const entryGate = el.gateLaneSelect ? el.gateLaneSelect.value : "Gate 1 (North Entrance)";
+    announceGateEvent(`Token ${record.tokenId}, vehicle ${res.entry.vehicleNo} checked in at ${entryGate}. Proceed to Quality Lab Counter 2 for moisture testing.`);
   }
 
   function saveGrossWeighment() {
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
-    if (!record) return;
+    const record = getRecord(currentRecordId);
+    if (!ensureWeighable(record)) return;
 
     const grossVal = parseFloat(el.scaleWeightInput.value) || (record.estimatedQty + 8.20);
-    const nowTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    if (!(grossVal > 0)) {
+      alert("Please capture a valid gross weight first!");
+      return;
+    }
 
-    record.grossWeight = grossVal;
-    record.grossTime = nowTime;
-    record.status = "GROSS_WEIGHED";
-
-    saveGateRecords();
-    syncWithQCAndFarmer(record, "GROSS_WEIGHED");
+    store.saveWeighing(record.tokenId, { gross: store.round2(grossVal) });
+    refreshRecords();
     renderQueue();
+    updateTopMetrics();
+    selectRecord(record.tokenId, { keepInputs: true }); // refresh the status badge, keep the scale reading
 
     setScaleMode('TARE');
     announceGateEvent(`Gross weight for token ${record.tokenId} recorded as ${grossVal.toFixed(2)} quintals. Proceed to grain unloading bay.`);
   }
 
   function certifyTareWeighment() {
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
-    if (!record) return;
+    const record = getRecord(currentRecordId);
+    if (!ensureWeighable(record)) return;
 
     if (record.grossWeight === null) {
       alert("Please capture and save Gross Weight first!");
@@ -692,29 +707,29 @@
     }
 
     const tareVal = parseFloat(el.scaleWeightInput.value) || 8.20;
-    const netVal = parseFloat((record.grossWeight - tareVal).toFixed(2));
-    const nowTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    if (tareVal >= record.grossWeight) {
+      alert("⚠️ Tare weight must be less than the gross weight. Please re-read the scale.");
+      return;
+    }
 
-    record.tareWeight = tareVal;
-    record.tareTime = nowTime;
-    record.netWeight = netVal;
-    record.status = "COMPLETED";
+    const res = store.recordWeighment(record.tokenId, { gross: record.grossWeight, tare: tareVal });
+    if (!res.ok) {
+      alert(`⛔ ${res.error}.`);
+      return;
+    }
 
-    const rate = (record.baseMsp || 2300) - (record.deductionRate || 0);
-    record.totalAmount = Math.round(netVal * rate);
-
-    saveGateRecords();
-    syncWithQCAndFarmer(record, "COMPLETED");
+    refreshRecords();
     renderQueue();
     selectRecord(record.tokenId);
+    updateTopMetrics();
 
-    announceGateEvent(`Weighment complete for ${record.farmerName}. Net crop weight ${netVal.toFixed(2)} quintals certified. Official weighment slip issued.`);
+    announceGateEvent(`Weighment complete for ${record.farmerName}. Net crop weight ${res.weighment.net.toFixed(2)} quintals certified. Official weighment slip issued.`);
 
     openWeightSlipModal();
   }
 
   function recalculateWeighment() {
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
+    const record = getRecord(currentRecordId);
     if (!record) return;
 
     let gross = record.grossWeight;
@@ -767,76 +782,7 @@
     }
   }
 
-  function syncWithQCAndFarmer(record, eventType) {
-    try {
-      // 1. Sync with Farmer Batches in localStorage
-      const rawBatches = localStorage.getItem("kisan_procurement_batches");
-      let batches = rawBatches ? JSON.parse(rawBatches) : [];
-      let matched = batches.find(b => b.token === record.tokenId || b.id === record.tokenId);
 
-      if (matched) {
-        if (eventType === "GATE_CHECKED_IN") {
-          matched.step = 2;
-          matched.status = "Inside Mandi Yard (In Quality Lab)";
-        } else if (eventType === "GROSS_WEIGHED") {
-          matched.step = 4;
-          matched.status = `Gross Weighed (${record.grossWeight} Qtl)`;
-        } else if (eventType === "COMPLETED") {
-          matched.step = 5;
-          matched.qty = record.netWeight;
-          matched.total = record.totalAmount;
-          matched.status = "Procured & Weighed (J-Form Issued)";
-          matched.dbtStatus = "Approved for DBT Disbursement";
-        }
-      } else {
-        batches.unshift({
-          id: `PROC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-          token: record.tokenId,
-          cropKey: record.cropKey,
-          crop: record.cropName,
-          qty: record.netWeight || record.estimatedQty,
-          centre: record.hubName,
-          slot: record.slotTime,
-          status: eventType === "COMPLETED" ? "Procured & Weighed (J-Form Issued)" : "In Yard (Weighment Station)",
-          moisture: `${record.moisturePct || 11.8}% (Grade A)`,
-          rate: record.baseMsp,
-          total: record.totalAmount || Math.round(record.estimatedQty * record.baseMsp),
-          dbtStatus: eventType === "COMPLETED" ? "Approved for DBT Disbursement" : "Gate Check-in Complete",
-          step: eventType === "COMPLETED" ? 5 : 2
-        });
-      }
-      localStorage.setItem("kisan_procurement_batches", JSON.stringify(batches));
-
-      // 2. Sync with QC Samples Queue
-      const rawQC = localStorage.getItem("agriqueue_qc_samples");
-      let qcSamples = rawQC ? JSON.parse(rawQC) : [];
-      let qcMatched = qcSamples.find(s => s.tokenId === record.tokenId);
-      if (!qcMatched && eventType === "GATE_CHECKED_IN") {
-        qcSamples.unshift({
-          tokenId: record.tokenId,
-          farmerId: record.farmerId,
-          farmerName: record.farmerName,
-          farmerMobile: record.farmerMobile,
-          village: record.village,
-          land: record.land,
-          cropKey: record.cropKey,
-          cropName: record.cropName,
-          estimatedQty: record.estimatedQty,
-          vehicleNo: record.vehicleNo,
-          arrivedTime: record.gateInTime || "Just Now",
-          hubName: record.hubName,
-          status: "PENDING",
-          testedMoisture: null,
-          testedForeignMatter: null,
-          testedDamagedGrain: null,
-          assignedLane: record.weighbridgeScale
-        });
-        localStorage.setItem("agriqueue_qc_samples", JSON.stringify(qcSamples));
-      }
-    } catch (e) {
-      console.warn("Could not sync gate event with shared batches", e);
-    }
-  }
 
   function announceGateEvent(text) {
     if (!('speechSynthesis' in window)) return;
@@ -855,8 +801,8 @@
 
     gateRecords.forEach(r => {
       if (r.status !== 'SCHEDULED') arrived++;
-      if (r.status === 'GATE_CHECKED_IN' || r.status === 'IN_LAB' || r.status === 'GROSS_WEIGHED') awaitingWeigh++;
-      if (r.status === 'COMPLETED') {
+      if ((r.status === 'GATE_CHECKED_IN' || r.status === 'GROSS_WEIGHED') && !r.rejected) awaitingWeigh++;
+      if (r.status === 'COMPLETED' && r.weighedToday) {
         completed++;
         totalQuintals += (r.netWeight || r.estimatedQty);
       }
@@ -868,14 +814,29 @@
     if (el.statNetQuintals) el.statNetQuintals.textContent = `${totalQuintals.toFixed(1)} Q`;
   }
 
+  // Another tab (farmer booking, Quality Lab result, admin lane change) changed shared data
+  function onExternalChange() {
+    const before = getRecord(currentRecordId);
+    refreshRecords();
+    renderQueue();
+    updateTopMetrics();
+    const after = getRecord(currentRecordId);
+    if (!after) return;
+    if (!before || before.status !== after.status) {
+      selectRecord(currentRecordId);
+    } else {
+      selectRecord(currentRecordId, { keepInputs: true });
+    }
+  }
+
   function openWeightSlipModal() {
-    const record = gateRecords.find(r => r.tokenId === currentRecordId);
+    const record = getRecord(currentRecordId);
     if (!record || !el.slipModal) return;
 
     const gross = record.grossWeight || (record.estimatedQty + 8.20);
     const tare = record.tareWeight || 8.20;
     const net = record.netWeight || (gross - tare);
-    const rate = record.baseMsp || 2300;
+    const rate = (record.baseMsp || 2300) - (record.deductionRate || 0);
     const totalAmount = record.totalAmount || Math.round(net * rate);
 
     const slipContent = document.getElementById("weight-slip-print-area");
@@ -927,15 +888,15 @@
             <tbody>
               <tr>
                 <td><strong>1. Gross Weight (Loaded Trolley)</strong></td>
-                <td>${record.grossTime || '09:18 AM'}</td>
+                <td>${record.grossTime || '—'}</td>
                 <td><strong style="font-family: var(--font-mono); font-size: 1.05rem;">${gross.toFixed(2)} Qtl</strong></td>
-                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale WB-01 Certified</span></td>
+                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale ${record.scaleId || 'WB-01'} Certified</span></td>
               </tr>
               <tr>
                 <td><strong>2. Tare Weight (Empty Vehicle)</strong></td>
-                <td>${record.tareTime || '09:32 AM'}</td>
+                <td>${record.tareTime || '—'}</td>
                 <td><strong style="font-family: var(--font-mono); font-size: 1.05rem;">${tare.toFixed(2)} Qtl</strong></td>
-                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale WB-01 Certified</span></td>
+                <td><span style="color: #16a34a; font-weight: 700;">✓ Scale ${record.scaleId || 'WB-01'} Certified</span></td>
               </tr>
               <tr style="background: #f0fdf4;">
                 <td><strong style="color: var(--color-primary-dark); font-size: 1rem;">3. CERTIFIED NET CROP QUANTITY</strong></td>
@@ -948,8 +909,8 @@
 
           <div class="slip-financial-box">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem;">
-              <span>Government MSP Rate: <strong>₹${rate.toLocaleString("en-IN")} / Qtl</strong></span>
-              <span>Quality Grade: <strong style="color: #16a34a;">${record.qcGrade} (Moisture: ${record.moisturePct || 11.8}%)</strong></span>
+              <span>Government MSP Rate: <strong>₹${rate.toLocaleString("en-IN")} / Qtl</strong>${record.deductionRate > 0 ? ` <span style="font-size: 0.75rem; color: #64748b;">(after ₹${record.deductionRate} / Qtl moisture deduction)</span>` : ''}</span>
+              <span>Quality Grade: <strong style="color: #16a34a;">${record.qcGrade} (Moisture: ${record.moisturePct != null ? record.moisturePct + '%' : '—'})</strong></span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.15rem; font-weight: 800; color: var(--color-primary-dark); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--color-primary-border);">
               <span>TOTAL CERTIFIED MSP DIRECT BENEFIT TRANSFER:</span>
