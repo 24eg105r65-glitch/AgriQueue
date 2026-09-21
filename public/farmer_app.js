@@ -221,6 +221,107 @@
   let currentAudio = null;
   let userCoords = { lat: 29.6857, lng: 76.9905 }; // Default to Karnal region
 
+  // Shared data layer (ops_store.js) and queue model (queue_engine.js): optional, the page also works without them
+  const store = window.AgriQueueStore || null;
+  const engine = window.AgriQueueEngine || null;
+
+  // Profile / live-queue text is computed from the logged-in farmer and their token, not taken from the dictionary
+  const PROFILE_KEYS = ["farmerName", "landVal", "village", "dbtBadge"];
+  const LIVE_KEYS = ["ticketHeader", "assignedLane", "aheadVal", "gradePassBadge", "moistureDesc", "weighmentDesc", "dbtTransferDesc"];
+  const DEMO_PIN = "1234";
+  const MIN_WORD = { en: "min", hi: "मिनट", te: "నిమిషాలు", ta: "நிமிடம்", pa: "ਮਿੰਟ", mr: "मिनिटे", kn: "ನಿಮಿಷ", bn: "মিনিট", gu: "મિનિટ" };
+  const BANK_BY_IFSC = { SBIN: "SBI", PUNB: "PNB", HDFC: "HDFC", ICIC: "ICICI", BARB: "BOB", UTIB: "AXIS", CNRB: "CANARA", UBIN: "UBI" };
+
+  function esc(v) {
+    return String(v === undefined || v === null ? "" : v).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  // PIN is never stored: only a salted hash (SHA-256 where the browser allows it, FNV-1a otherwise)
+  async function hashPin(mobile, pin) {
+    const data = `agriqueue|${mobile}|${pin}`;
+    try {
+      if (window.crypto && window.crypto.subtle) {
+        const buf = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(data));
+        return "sha256:" + Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+      }
+    } catch (e) { /* fall through */ }
+    let h = 2166136261;
+    for (const ch of data) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    return "fnv1a:" + h.toString(16);
+  }
+
+  function findRegistered(digits, idUpper) {
+    if (/^\d{10}$/.test(digits)) {
+      const raw = localStorage.getItem("kisan_user_" + digits);
+      if (raw) { try { return JSON.parse(raw); } catch (e) { /* ignore */ } }
+    }
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf("kisan_user_") === 0) {
+        try { const r = JSON.parse(localStorage.getItem(k)); if (r && String(r.id).toUpperCase() === idUpper) return r; } catch (e) { /* ignore */ }
+      }
+    }
+    return null;
+  }
+
+  // Mobile number or Farmer ID + PIN. Demo farmers share the demo PIN; registered farmers use their own.
+  async function authenticate(identifier, pin) {
+    const id = String(identifier || "").trim();
+    const digits = id.replace(/\D/g, "");
+    const idUpper = id.toUpperCase();
+    const demo = Object.values(DEMO_FARMERS).find((f) => f.phone === digits || f.id === idUpper);
+    if (demo) return pin === DEMO_PIN ? demo : null;
+
+    const rec = findRegistered(digits, idUpper);
+    if (!rec) return null;
+    const hash = await hashPin(rec.phone, pin);
+    if (!rec.pinHash) {
+      // profile saved before PINs were stored: the first valid PIN entered becomes its PIN
+      if (!/^\d{4}$/.test(pin)) return null;
+      rec.pinHash = hash;
+      safeSet("kisan_user_" + rec.phone, JSON.stringify(rec));
+    } else if (rec.pinHash !== hash) {
+      return null;
+    }
+    const profile = Object.assign({}, rec);
+    delete profile.pinHash;
+    return profile;
+  }
+
+  function validateSignup(v) {
+    if (!/[A-Za-z\u0900-\u0DFF\u0980-\u09FF\u0A00-\u0AFF]{2,}/.test(v.name) || /[<>]/.test(v.name)) return "Please enter the farmer's full name (letters only).";
+    if (!/^[6-9]\d{9}$/.test(v.mobile)) return "Enter a valid 10-digit Indian mobile number (starting with 6, 7, 8 or 9).";
+    if (v.aadhaarDigits.length !== 12) return "Aadhaar number must have exactly 12 digits.";
+    if (!(parseFloat(v.land) >= 0.5)) return "Land size must be at least 0.5 acres.";
+    if (!v.village) return "Please enter your village and district.";
+    if (!/^\d{9,18}$/.test(v.bankAcc)) return "Bank account number must be 9 to 18 digits.";
+    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.ifsc)) return "Enter a valid IFSC code (for example SBIN0001234).";
+    if (!/^\d{4}$/.test(v.pin)) return "The security PIN must be exactly 4 digits.";
+    return null;
+  }
+
+  function parseCoords(text) {
+    const m = String(text || "").match(/(-?\d+\.\d+)[^\d-]+(-?\d+\.\d+)/);
+    return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : { lat: 29.6857, lng: 76.9905 };
+  }
+
+  function isRegistered(mobile) {
+    return !!localStorage.getItem("kisan_user_" + mobile) || Object.values(DEMO_FARMERS).some((f) => f.phone === mobile);
+  }
+
+  function newFarmerId() {
+    const used = new Set(Object.values(DEMO_FARMERS).map((f) => f.id));
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf("kisan_user_") === 0) { try { used.add(JSON.parse(localStorage.getItem(k)).id); } catch (e) { /* ignore */ } }
+    }
+    let id;
+    do { id = `FAR-2026-${Math.floor(1000 + Math.random() * 9000)}`; } while (used.has(id));
+    return id;
+  }
+
   // Complete UI Localization Dictionary for all 9 Languages
   const UI_TEXT = {
     en: {
@@ -1259,12 +1360,29 @@
 
   // 1. Authentication State Manager
   function getLoggedInUser() {
-    const raw = localStorage.getItem("kisan_auth_user");
-    return raw ? JSON.parse(raw) : DEMO_FARMERS.ramesh;
+    try {
+      const raw = localStorage.getItem("kisan_auth_user");
+      const user = raw ? JSON.parse(raw) : null;
+      return user && typeof user === "object" && !Array.isArray(user) ? user : DEMO_FARMERS.ramesh;
+    } catch (e) {
+      return DEMO_FARMERS.ramesh;
+    }
   }
 
+  // Storage can refuse writes (private mode, quota full): report it instead of throwing
+  function safeSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  const STORAGE_BLOCKED_MSG = "✗ This browser is not letting AgriQueue save data (private mode or storage full).\nPlease free up space or use a normal window and try again.";
+
   function setLoggedInUser(user) {
-    localStorage.setItem("kisan_auth_user", JSON.stringify(user));
+    return safeSet("kisan_auth_user", JSON.stringify(user));
   }
 
   function logoutUser() {
@@ -1499,12 +1617,129 @@
     if (outTotal) outTotal.innerText = `₹${total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
   }
 
+  // The logged-in farmer's name, code, land, village and bank (demo farmer Ramesh keeps the localized dictionary text)
+  function applyProfile(dict) {
+    const u = getLoggedInUser();
+    const isDefault = u.id === DEMO_FARMERS.ramesh.id;
+    const landNum = (String(u.land).match(/[\d.]+/) || [""])[0];
+    const landUnit = String(dict.landVal || "").replace(/[\d.\s]+/, "").trim();
+    document.querySelectorAll('[data-i18n="farmerName"]').forEach((n) => { n.innerText = isDefault ? dict.farmerName : u.name; });
+    const code = document.querySelector(".profile-details strong");
+    if (code) code.innerText = u.id;
+    document.querySelectorAll('[data-i18n="landVal"]').forEach((n) => { n.innerText = isDefault ? dict.landVal : (landNum ? `${landNum} ${landUnit}` : u.land); });
+    document.querySelectorAll('[data-i18n="village"]').forEach((n) => { n.innerText = isDefault ? dict.village : `${String(dict.village).split(":")[0]}: ${u.village}`; });
+    document.querySelectorAll('[data-i18n="dbtBadge"]').forEach((n) => { n.innerText = isDefault ? dict.dbtBadge : `${u.bank} • DBT Active`; });
+  }
+
+  function fillPhone(u) {
+    const input = document.getElementById("proc-phone-input");
+    if (input && u.phone) input.value = `${u.phone.slice(0, 5)}-${u.phone.slice(5)}`;
+  }
+
+  // The farmer's current token: their latest booking (the demo farmer also has the seeded TK-1042)
+  function currentBooking() {
+    const u = getLoggedInUser();
+    const batches = getStoredBatches();
+    const own = batches.filter((b) => b.farmerId === u.id);
+    if (own.length) return own[0];
+    return u.id === DEMO_FARMERS.ramesh.id ? (batches.find((b) => b.token === "TK-1042") || null) : null;
+  }
+
+  // Live Queue tab: real hub, token, lane, trolleys ahead, ETA (M/M/c model), progress steps, quality, weighment, payment
+  function renderLiveQueue() {
+    const tab = document.getElementById("tab-live-queue");
+    if (!tab) return;
+    const $ = (id) => document.getElementById(id);
+    const put = (node, text) => { if (node) node.textContent = text; };
+    const lang = getSelectedLang();
+    const dict = UI_TEXT[lang] || UI_TEXT.en;
+    const b = currentBooking();
+    const tk = b && store ? store.getToken(b.token) : null;
+
+    const hero = $("active-token-hero");
+    const header = tab.querySelector(".ticket-header");
+    const lanePill = tab.querySelector(".ticket-lane-pill");
+    const ahead = tab.querySelector('[data-i18n="aheadVal"]');
+    const steps = tab.querySelectorAll(".queue-stepper .step-item");
+    const laneLabel = String(dict.assignedLane || "").split(":")[0];
+
+    if (!b) {
+      put(hero, "—");
+      put(header, "🏛️ —");
+      put(lanePill, `${laneLabel}: —`);
+      put($("lq-serving"), "—");
+      put($("lq-eta"), "—");
+      put(ahead, "—");
+      steps.forEach((s, i) => { s.classList.remove("step-done", "step-active"); s.querySelector(".step-circle").textContent = i + 1; });
+      put(tab.querySelector('[data-i18n="gradePassBadge"]'), "—");
+      put(tab.querySelector('[data-i18n="moistureDesc"]'), "");
+      put($("lq-net"), "—");
+      put(tab.querySelector('[data-i18n="weighmentDesc"]'), "");
+      put($("lq-amount"), "—");
+      put(tab.querySelector('[data-i18n="dbtTransferDesc"]'), "");
+      return;
+    }
+
+    put(hero, b.token);
+    const tokens = store ? store.getTokens() : [];
+    const hubId = tk ? tk.hubId : null;
+    const hubTokens = tokens.filter((t) => t.hubId === hubId && !t.simulated);
+    const inLab = hubTokens.filter((t) => t.status === "ARRIVED").sort((x, y) => x.statusTimeline.gateInAt - y.statusTimeline.gateInAt);
+
+    put(header, `🏛️ ${tk ? tk.hubName : b.centre}${tk && tk.lane ? " • " + tk.lane : ""}`);
+    put(lanePill, `${laneLabel}: ${tk && tk.lane ? tk.lane : "—"}`);
+    put($("lq-serving"), inLab.length && !(tk && inLab[0].tokenId === tk.tokenId) ? inLab[0].tokenId : "—");
+
+    // Trolleys ahead of this one for the next station, and the predicted wait
+    const status = tk ? tk.status : "BOOKED";
+    const passed = tk && tk.qcOutcome && tk.qcOutcome !== "REJECTED";
+    let nAhead = 0;
+    let eta = null;
+    if (store && engine && tk && hubId) {
+      const lab = store.countersFor(hubId).filter((c) => c.type === "lab" && c.open).length || 1;
+      const weigh = store.countersFor(hubId).filter((c) => c.type === "weigh" && c.open).length || 1;
+      if (status === "BOOKED" || status === "ARRIVED") {
+        nAhead = inLab.filter((t) => t.tokenId !== tk.tokenId && (status === "BOOKED" || t.statusTimeline.gateInAt <= tk.statusTimeline.gateInAt)).length;
+        eta = engine.backlogWaitMin(nAhead, store.SERVICE_RATE_PER_HR.lab, lab) + 60 / store.SERVICE_RATE_PER_HR.lab;
+      } else if (status === "QUALITY_INSPECTED" && passed) {
+        nAhead = hubTokens.filter((t) => t.status === "QUALITY_INSPECTED" && t.qcOutcome !== "REJECTED" && t.tokenId !== tk.tokenId).length;
+        eta = engine.backlogWaitMin(nAhead, store.SERVICE_RATE_PER_HR.weigh, weigh) + 60 / store.SERVICE_RATE_PER_HR.weigh;
+      }
+    }
+    const unit = String(dict.aheadVal || "").replace(/[\d\s]+/, "").trim();
+    put(ahead, `${nAhead} ${unit}`.trim());
+    put($("lq-eta"), eta === null ? "—" : `~${Math.max(1, Math.round(eta))} ${MIN_WORD[lang] || "min"}`);
+
+    // Progress: 1 slot, 2 gate, 3 moisture, 4 weight, 5 DBT paid
+    const done = { BOOKED: 1, ARRIVED: 2, QUALITY_INSPECTED: passed ? 3 : 2, WEIGHMENT_COMPLETED: 4, J_FORM_ISSUED: 4, DBT_DISBURSED: 5 }[status] || Math.min(5, b.step || 1);
+    steps.forEach((s, i) => {
+      s.classList.toggle("step-done", i < done);
+      s.classList.toggle("step-active", i === done);
+      s.querySelector(".step-circle").textContent = i < done ? "✓" : i + 1;
+    });
+
+    // Quality, weighment and payment cards
+    const qr = tk && tk.qualityReport;
+    const w = tk && tk.weighmentReport;
+    const rate = tk ? tk.financials.mspPerQtl : b.rate;
+    put(tab.querySelector('[data-i18n="gradePassBadge"]'), qr ? `${qr.moisturePct}% (${qr.grade})` : "—");
+    const cut = tk ? Math.max(0, store.CROPS[tk.cropKey].msp - rate) : 0;
+    put(tab.querySelector('[data-i18n="moistureDesc"]'), qr ? `₹${Number(rate).toLocaleString("en-IN")} / Qtl${cut > 0 ? ` • −₹${cut} / Qtl` : ""}` : "");
+    put($("lq-net"), w ? `${w.netWeightQtl.toFixed(2)} Qtl` : "—");
+    put(tab.querySelector('[data-i18n="weighmentDesc"]'), w ? `${w.grossWeightQtl.toFixed(2)} − ${w.tareWeightQtl.toFixed(2)} = ${w.netWeightQtl.toFixed(2)} Qtl` : "");
+    const amount = tk ? tk.financials.totalAmount : b.total;
+    put($("lq-amount"), `${w ? "" : "~"}₹${Number(amount).toLocaleString("en-IN")}`);
+    const pay = tk && tk.payment;
+    const stageWord = { DISPATCHED: "Dispatched", IN_TRANSIT: "In transit", SETTLED: "Settled" };
+    put(tab.querySelector('[data-i18n="dbtTransferDesc"]'), pay ? `${tk.bank ? tk.bank.display : ""} • UTR ${pay.utr} • ${stageWord[pay.stage]}` : (tk && tk.bank ? `→ ${tk.bank.display}` : ""));
+  }
+
   // 4. Instant Full UI Translation Engine
   function applyLanguage(lang) {
     if (!lang || !UI_TEXT[lang]) {
       lang = getSelectedLang();
     }
-    localStorage.setItem("kisan_preferred_lang", lang);
+    safeSet("kisan_preferred_lang", lang);
 
     const langSelect = document.getElementById("kisan-lang-select");
     if (langSelect && langSelect.value !== lang) {
@@ -1516,6 +1751,7 @@
     // Update all elements with data-i18n
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.dataset.i18n;
+      if (PROFILE_KEYS.indexOf(key) !== -1 || LIVE_KEYS.indexOf(key) !== -1) return; // filled from the farmer / token below
       if (dict[key]) {
         if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
           el.placeholder = dict[key];
@@ -1555,11 +1791,8 @@
 
     const hubSelect = document.getElementById("proc-hub-select");
     if (hubSelect && dict.hubOpt1) {
-      const hubs = [
-        { val: "Karnal Central Procurement Hub", text: dict.hubOpt1 },
-        { val: "Gharaunda Agri Mandi Centre", text: dict.hubOpt2 },
-        { val: "Taraori Grain Market Hub", text: dict.hubOpt3 }
-      ];
+      // All six procurement centres (the first three have localized labels)
+      const hubs = PROCUREMENT_CENTRES.map((c, i) => ({ val: c.name, text: i < 3 ? dict["hubOpt" + (i + 1)] : `${c.id}: ${c.name}` }));
       const cur = hubSelect.value;
       hubSelect.innerHTML = hubs.map(h => `<option value="${h.val}" ${h.val === cur ? "selected" : ""}>${h.text}</option>`).join("");
     }
@@ -1591,6 +1824,10 @@
 
     // Update MSP calculation box
     updatePayout();
+
+    // Logged-in farmer's profile and their token's live status
+    applyProfile(dict);
+    renderLiveQueue();
 
     // Play greeting audio file for selected language
     playAudioFile(`voice-audio/greet_${lang}.mp3`).catch(() => {});
@@ -1631,13 +1868,34 @@
   ];
 
   function getStoredBatches() {
-    const raw = localStorage.getItem("kisan_procurement_batches");
-    return raw ? JSON.parse(raw) : DEFAULT_PROC_BATCHES;
+    try {
+      const raw = localStorage.getItem("kisan_procurement_batches");
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed : DEFAULT_PROC_BATCHES;
+    } catch (e) {
+      return DEFAULT_PROC_BATCHES;
+    }
+  }
+
+  // A token no other portal already knows (bookings, lab queue, gate): never reuses an existing TK number
+  function generateToken() {
+    const used = new Set(getStoredBatches().map((b) => b.token));
+    if (store) { try { store.getTokens().forEach((t) => used.add(t.tokenId)); } catch (e) { /* ignore */ } }
+    for (let i = 0; i < 200; i++) {
+      const tok = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
+      if (!used.has(tok)) return tok;
+    }
+    for (let n = 1000; n < 10000; n++) { if (!used.has(`TK-${n}`)) return `TK-${n}`; }
+    return `TK-${Date.now() % 100000}`;
   }
 
   function saveBatches(batches) {
-    localStorage.setItem("kisan_procurement_batches", JSON.stringify(batches));
+    if (!safeSet("kisan_procurement_batches", JSON.stringify(batches))) {
+      alert(STORAGE_BLOCKED_MSG);
+      return false;
+    }
     renderProcurementList();
+    return true;
   }
 
   function renderProcurementList() {
@@ -1645,7 +1903,8 @@
     if (!container) return;
 
     const lang = getSelectedLang();
-    const batches = getStoredBatches();
+    const me = getLoggedInUser();
+    const batches = getStoredBatches().filter((b) => !b.farmerId || b.farmerId === me.id);
     if (batches.length === 0) {
       container.innerHTML = `<div style="text-align: center; padding: 2.5rem; color: #64748b; font-size: 0.88rem;">No active procurement records found. Use the slot booking form to register your harvest for procurement.</div>`;
       return;
@@ -1662,14 +1921,14 @@
           <div class="crop-title-text" style="flex: 1;">
             <div>
               <strong style="color: var(--text-main); font-size: 1rem;">${localizedCrop}</strong> 
-              <span style="font-family: var(--font-mono); font-weight: 700; color: var(--color-primary-dark); margin-left: 0.4rem;">[${b.token}]</span>
+              <span style="font-family: var(--font-mono); font-weight: 700; color: var(--color-primary-dark); margin-left: 0.4rem;">[${esc(b.token)}]</span>
             </div>
             <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.25rem;">
-              <span>Hub: <strong>${b.centre}</strong></span> • <span>Weight: <strong>${b.qty} Qtl</strong></span> • <span>MSP: <strong>₹${b.rate.toLocaleString("en-IN")}/q</strong></span>
+              <span>Hub: <strong>${esc(b.centre)}</strong></span> • <span>Weight: <strong>${b.qty} Qtl</strong></span> • <span>MSP: <strong>₹${b.rate.toLocaleString("en-IN")}/q</strong></span>
             </div>
           </div>
           <div class="crop-card-right">
-            <span class="crop-badge-status">${b.status}</span>
+            <span class="crop-badge-status">${esc(b.status)}</span>
             <div style="font-size: 0.95rem; font-weight: 800; font-family: var(--font-mono); color: var(--color-primary-dark); margin-top: 0.35rem;">
               ₹${b.total.toLocaleString("en-IN")}
             </div>
@@ -1685,8 +1944,8 @@
         </div>
 
         <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #64748b;">
-          <span>Moisture: <strong>${b.moisture}</strong></span>
-          <span style="color: #16a34a; font-weight: 700;">✓ ${b.dbtStatus}</span>
+          <span>Moisture: <strong>${esc(b.moisture)}</strong></span>
+          <span style="color: #16a34a; font-weight: 700;">✓ ${esc(b.dbtStatus)}</span>
         </div>
       </div>
     `;
@@ -1705,25 +1964,14 @@
       langSelect.value = currentLang;
       langSelect.addEventListener("change", () => {
         const lang = langSelect.value;
-        localStorage.setItem("kisan_preferred_lang", lang);
+        safeSet("kisan_preferred_lang", lang);
         applyLanguage(lang);
       });
     }
 
     const currentUser = getLoggedInUser();
-
-    // Populate user profile info in dashboard
-    const nameEl = document.querySelector('[data-i18n="farmerName"]');
-    if (nameEl && currentUser.name) nameEl.innerText = currentUser.name;
-
-    const landEl = document.querySelector('[data-i18n="landVal"]');
-    if (landEl && currentUser.land) landEl.innerText = currentUser.land;
-
-    const villageEl = document.querySelector('[data-i18n="village"]');
-    if (villageEl && currentUser.village) villageEl.innerText = `गाँव: ${currentUser.village}`;
-
-    const dbtEl = document.querySelector('[data-i18n="dbtBadge"]');
-    if (dbtEl && currentUser.bank) dbtEl.innerText = `${currentUser.bank} Active DBT`;
+    if (currentUser.lat && currentUser.lng) userCoords = { lat: currentUser.lat, lng: currentUser.lng };
+    fillPhone(currentUser);
 
     // Render lists
     renderProcurementList();
@@ -1857,23 +2105,18 @@
     // 7. Login Form Handler
     const loginForm = document.getElementById("kisan-login-form");
     if (loginForm) {
-      loginForm.addEventListener("submit", (e) => {
+      loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const identifier = document.getElementById("login-identifier").value.trim();
-        
-        // Find if matches demo or stored
-        let matchedUser = DEMO_FARMERS.ramesh;
-        if (identifier.includes("9044") || identifier.includes("sukhwinder") || identifier.includes("3210")) {
-          matchedUser = DEMO_FARMERS.sukhwinder;
-        } else if (identifier.includes("7731") || identifier.includes("venkat") || identifier.includes("3211")) {
-          matchedUser = DEMO_FARMERS.venkat;
-        } else if (localStorage.getItem(`kisan_user_${identifier}`)) {
-          matchedUser = JSON.parse(localStorage.getItem(`kisan_user_${identifier}`));
+        const pin = document.getElementById("login-pin").value;
+        const user = await authenticate(identifier, pin);
+        if (!user) {
+          alert("✗ Invalid mobile number / Farmer ID or PIN.\nPlease check the details and try again.");
+          return;
         }
-
-        setLoggedInUser(matchedUser);
+        if (!setLoggedInUser(user)) { alert(STORAGE_BLOCKED_MSG); return; }
         playChime();
-        alert(`✓ Welcome back, ${matchedUser.name}!\nLogged in successfully.`);
+        alert(`✓ Welcome back, ${user.name}!\nLogged in successfully.`);
         window.location.href = "farmer_dashboard.html";
       });
 
@@ -1882,7 +2125,7 @@
         btn.addEventListener("click", () => {
           const key = btn.dataset.demoFarmer;
           const user = DEMO_FARMERS[key] || DEMO_FARMERS.ramesh;
-          setLoggedInUser(user);
+          if (!setLoggedInUser(user)) { alert(STORAGE_BLOCKED_MSG); return; }
           playChime();
           alert(`✓ Loaded Demo Profile: ${user.name} (${user.village})`);
           window.location.href = "farmer_dashboard.html";
@@ -1893,34 +2136,46 @@
     // 8. Signup Form Handler
     const signupForm = document.getElementById("kisan-signup-form");
     if (signupForm) {
-      signupForm.addEventListener("submit", (e) => {
+      signupForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const name = document.getElementById("signup-name").value.trim();
-        const mobile = document.getElementById("signup-mobile").value.trim();
-        const aadhaar = document.getElementById("signup-aadhaar").value.trim();
-        const land = document.getElementById("signup-land").value.trim();
-        const village = document.getElementById("signup-village").value.trim();
-        const bankAcc = document.getElementById("signup-bank-acc").value.trim();
+        const val = (id) => document.getElementById(id).value.trim();
+        const v = {
+          name: val("signup-name").replace(/\s+/g, " "),
+          mobile: val("signup-mobile"),
+          aadhaarDigits: val("signup-aadhaar").replace(/\D/g, ""),
+          land: val("signup-land"),
+          village: val("signup-village"),
+          bankAcc: val("signup-bank-acc").replace(/\s/g, ""),
+          ifsc: val("signup-ifsc").toUpperCase(),
+          pin: document.getElementById("signup-pin").value
+        };
         const crop = document.getElementById("signup-crop").value;
 
-        const newFarmer = {
-          name: name,
-          id: `FAR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-          phone: mobile,
-          village: village,
-          land: `${land} Acres`,
-          aadhaar: aadhaar,
-          bank: `DBT A/c ...${bankAcc.slice(-4) || '5019'}`,
+        const problem = validateSignup(v);
+        if (problem) { alert(`✗ ${problem}`); return; }
+        if (isRegistered(v.mobile)) { alert("✗ This mobile number is already registered.\nPlease sign in instead."); return; }
+
+        const where = parseCoords(document.getElementById("signup-coordinates").value);
+        const bankName = BANK_BY_IFSC[v.ifsc.slice(0, 4)] || "DBT";
+        const profile = {
+          name: v.name,
+          id: newFarmerId(),
+          phone: v.mobile,
+          village: v.village,
+          land: `${parseFloat(v.land)} Acres`,
+          aadhaar: `XXXX-XXXX-${v.aadhaarDigits.slice(-4)}`,   // only the last 4 digits are kept
+          bank: `${bankName} A/c ...${v.bankAcc.slice(-4)}`,
+          ifsc: v.ifsc,
           crop: crop,
-          lat: 29.6857,
-          lng: 76.9905
+          lat: where.lat,
+          lng: where.lng
         };
 
-        setLoggedInUser(newFarmer);
-        localStorage.setItem(`kisan_user_${mobile}`, JSON.stringify(newFarmer));
+        const pinHash = await hashPin(v.mobile, v.pin);
+        if (!safeSet(`kisan_user_${v.mobile}`, JSON.stringify(Object.assign({}, profile, { pinHash }))) || !setLoggedInUser(profile)) { alert(STORAGE_BLOCKED_MSG); return; }
 
         playChime();
-        alert(`✓ Congratulations ${name}!\nYour Farmer KYC has been registered and verified successfully.\nFarmer ID: ${newFarmer.id}`);
+        alert(`✓ Congratulations ${v.name}!\nYour Farmer KYC has been registered and verified successfully.\nFarmer ID: ${profile.id}`);
         window.location.href = "farmer_dashboard.html";
       });
     }
@@ -1940,11 +2195,13 @@
         e.preventDefault();
         const cropKey = document.getElementById("proc-crop-select").value;
         const cropInfo = CROPS_MSP[cropKey] || CROPS_MSP.paddy_a;
-        const qty = parseFloat(document.getElementById("proc-qty-input").value) || 50.0;
+        const qty = parseFloat(document.getElementById("proc-qty-input").value);
+        if (!(qty >= 1)) { alert("✗ Please enter the estimated quantity (at least 1 quintal)."); return; }
         const hub = document.getElementById("proc-hub-select").value;
         const slot = document.getElementById("proc-slot-select").value;
+        const me = getLoggedInUser();
 
-        const tokenNum = `TK-${Math.floor(1000 + Math.random() * 9000)}`;
+        const tokenNum = generateToken();
         const totalPayout = qty * cropInfo.msp;
 
         const newRecord = {
@@ -1956,6 +2213,12 @@
           centre: hub,
           slot: slot,
           vehicleNo: ((document.getElementById("proc-vehicle-input") || {}).value || "").replace(/\s*\([^)]*\)\s*$/, "").trim(),
+          farmerId: me.id,
+          farmerName: me.name,
+          farmerMobile: me.phone,
+          village: me.village,
+          land: me.land,
+          bank: me.bank,
           status: "Slot Confirmed (Gate Ready)",
           moisture: "Pending Test (≤14.0% Required)",
           rate: cropInfo.msp,
@@ -1966,13 +2229,12 @@
 
         const current = getStoredBatches();
         current.unshift(newRecord);
-        saveBatches(current);
+        if (!saveBatches(current)) return;
 
-        // Update live token display card
-        const display = document.getElementById("active-token-hero");
+        // Show the new token on the live ticket
         const ticket = document.getElementById("live-ticket-card");
-        if (display) display.innerText = tokenNum;
         if (ticket) ticket.style.display = "block";
+        renderLiveQueue();
 
         playChime();
 
@@ -1993,6 +2255,12 @@
 
     // Initial language application to sync everything on load
     applyLanguage(currentLang);
+
+    // Keep the live queue and records current while other portals (gate, lab, DBT) update the token
+    if (store) {
+      store.onChange(() => { renderProcurementList(); renderLiveQueue(); });
+      setInterval(renderLiveQueue, 5000);
+    }
   }
 
   if (document.readyState === "loading") {
