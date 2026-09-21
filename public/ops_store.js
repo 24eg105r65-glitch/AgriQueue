@@ -8,10 +8,11 @@
  * and adds two keys of its own:
  *   agriqueue_gate_state       (gate check-ins, weighments, expected arrivals)
  *   agriqueue_admin_state      (counter open/close state, congestion alert log)
+ *   agriqueue_dbt_state        (J-Form approvals, holds, PFMS payments, audit log: Module 5)
  *
  * getTokens() returns ONE merged view shaped like the TokenSchema in ARCHITECTURE.md
  * section 4, with `status` taken from the section 2 state machine
- * (BOOKED > ARRIVED > QUALITY_INSPECTED > WEIGHMENT_COMPLETED). The stage is derived from
+ * (BOOKED > ARRIVED > QUALITY_INSPECTED > WEIGHMENT_COMPLETED > J_FORM_ISSUED > DBT_DISBURSED). The stage is derived from
  * gate entries + the QC result, never from the farmer record's numeric `step`.
  */
 
@@ -23,12 +24,19 @@
     qc: 'agriqueue_qc_samples',
     gate: 'agriqueue_gate_state',
     admin: 'agriqueue_admin_state',
-    authUser: 'kisan_auth_user'
+    authUser: 'kisan_auth_user',
+    dbt: 'agriqueue_dbt_state'
   };
 
   const GATE_HUB_ID = 'PC-101';
   const OPERATOR_ID = 'GATE-OP-01';
   const HOUR_MS = 3600000;
+
+  // Module 5 (DBT settlement): simulated PFMS timings and the demo approving officer (role + id only)
+  const DBT_TIMING = { inTransitAfterMs: 15000, settledAfterMs: 40000 };
+  const DBT_OFFICER = { id: 'MO-KRL-021', role: 'Mandi Officer' };
+  const JFORM_TOLERANCE_PCT = 10;
+  const BANK_CODES = { SBI: 'SBIN', PNB: 'PUNB', HDFC: 'HDFC', ICICI: 'ICIC', BOB: 'BARB', AXIS: 'UTIB', CANARA: 'CNRB', UBI: 'UBIN', DBT: 'SBIN' };
 
   // Same crops / MSP as the farmer portal (CROPS_MSP) and the Quality Lab (FCI_QUALITY_STANDARDS)
   const CROPS = {
@@ -122,11 +130,33 @@
       cropKey: 'chana', estimatedQty: 40.0, vehicleNo: 'HR-05-M-4410', slotTime: 'Today 11:00 AM - 12:00 PM' }
   ];
 
+  // Aadhaar-linked bank accounts of the seeded farmers (same "BANK A/c ...1234" format the farmer portal uses)
+  const SEED_BANK = {
+    'TK-1042': 'SBI A/c ...5019', 'TK-1045': 'PNB A/c ...9102', 'TK-1048': 'SBI A/c ...4412', 'TK-1051': 'HDFC A/c ...7783', 'TK-0988': 'SBI A/c ...3320',
+    'TK-0931': 'SBI A/c ...6120', 'TK-0934': 'PNB A/c ...2298', 'TK-0938': 'ICICI A/c ...5510', 'TK-0941': 'SBI A/c ...8841',
+    'TK-0944': 'PNB A/c ...1175', 'TK-0947': 'SBI A/c ...9034', 'TK-0952': 'HDFC A/c ...4467', 'TK-0955': 'PNB A/c ...7720',
+    'TK-1053': 'SBI A/c ...3301', 'TK-1056': 'PNB A/c ...5582', 'TK-1059': 'SBI A/c ...1904', 'TK-1062': 'HDFC A/c ...6618'
+  };
+
+  // Quality result of the trolleys weighed earlier today (they never went through this browser's QC queue)
+  const WEIGHED_QC = {
+    'TK-0931': { status: 'PASSED_GRADE_A', moisture: 10.8, foreign: 0.30, damaged: 0.6 },
+    'TK-0934': { status: 'PASSED_GRADE_A', moisture: 12.6, foreign: 0.40, damaged: 0.9 },
+    'TK-0938': { status: 'PASSED_DEDUCTION', moisture: 15.2, foreign: 0.50, damaged: 1.1, rate: 2054 },   // 1.2% over x Rs30
+    'TK-0941': { status: 'PASSED_GRADE_A', moisture: 10.9, foreign: 0.30, damaged: 0.5 },
+    'TK-0944': { status: 'PASSED_GRADE_A', moisture: 7.1, foreign: 0.20, damaged: 0.4 },
+    'TK-0947': { status: 'PASSED_GRADE_A', moisture: 11.2, foreign: 0.40, damaged: 0.7 },
+    'TK-0952': { status: 'PASSED_GRADE_A', moisture: 13.1, foreign: 0.50, damaged: 1.0 },
+    'TK-0955': { status: 'PASSED_GRADE_A', moisture: 11.5, foreign: 0.30, damaged: 0.6 }
+  };
+
   const STAGE_LABEL = {
     BOOKED: 'Expected',
     ARRIVED: 'At Gate • Awaiting Lab',
     QUALITY_INSPECTED: 'Quality Inspected',
-    WEIGHMENT_COMPLETED: 'Weighed'
+    WEIGHMENT_COMPLETED: 'Weighed',
+    J_FORM_ISSUED: 'J-Form Issued',
+    DBT_DISBURSED: 'Paid (DBT Disbursed)'
   };
 
   // ---------------------------------------------------------------------------------------------
@@ -280,7 +310,7 @@
       WEIGHED_SEEDS.forEach((w, i) => {
         const lane = w.lane === 1 ? 'Lane 1 (North Weighbridge)' : 'Lane 2 (East Weighbridge)';
         entries[w.tokenId] = {
-          hubId: GATE_HUB_ID, vehicleNo: w.vehicleNo, lane, gateInAt: now - w.gateMins * 60000, operator: OPERATOR_ID, seeded: true,
+          hubId: GATE_HUB_ID, vehicleNo: w.vehicleNo, lane, gateInAt: now - w.gateMins * 60000, operator: OPERATOR_ID, seeded: true, qc: WEIGHED_QC[w.tokenId] || null, rate: (WEIGHED_QC[w.tokenId] || {}).rate,
           farmer: { farmerId: `FAR-2026-${4100 + i * 13}`, farmerName: w.name, farmerMobile: `98765432${30 + i}`, village: w.village, land: `${(3 + (i * 7) % 9) + 0.5} Acres` },
           cropKey: w.cropKey, estimatedQty: w.est, slotTime: 'Today 08:00 AM - 09:00 AM', bookedHubId: GATE_HUB_ID,
           weighment: { gross: w.gross, tare: w.tare, net: round2(w.gross - w.tare), scaleId: scaleIdFor(lane), at: now - w.weighMins * 60000 }
@@ -348,13 +378,14 @@
       return read(KEYS.authUser, null);
     }
 
-    function resolveFarmer(q, entry, exp) {
+    function resolveFarmer(q, entry, exp, b) {
       if (q && q.farmerName) {
         return { farmerId: q.farmerId, farmerName: q.farmerName, farmerMobile: q.farmerMobile, village: q.village, land: q.land };
       }
       if (entry && entry.farmer) return entry.farmer;
       if (exp) return { farmerId: exp.farmerId, farmerName: exp.farmerName, farmerMobile: exp.farmerMobile, village: exp.village, land: exp.land };
-      // Portal bookings carry no identity: use the logged-in farmer, else the portal's default profile
+      // Portal bookings record who made them; only bookings from before that fall back to the logged-in farmer
+      if (b && b.farmerId) return { farmerId: b.farmerId, farmerName: b.farmerName, farmerMobile: b.farmerMobile, village: b.village, land: b.land, bank: b.bank };
       const u = readAuthUser();
       if (u && u.name) return { farmerId: u.id, farmerName: u.name, farmerMobile: u.phone, village: u.village, land: u.land };
       return { farmerId: 'FAR-2026-8812', farmerName: 'Ramesh Chand', farmerMobile: '9876543212', village: 'Nilokheri (Karnal)', land: '4.5 Acres' };
@@ -380,6 +411,8 @@
       const batches = readBatches();
       const qc = readQcSamples();
       const gate = getGateState();
+      const dbt = readDbtState() || emptyDbt();
+      const nowTs = nowFn();
 
       const batchBy = {};
       batches.forEach((b) => { if (b.token) batchBy[b.token] = b; });
@@ -397,23 +430,46 @@
         const entry = gate.entries[id];
         const exp = expBy[id];
 
-        const farmer = resolveFarmer(q, entry, exp);
+        const farmer = resolveFarmer(q, entry, exp, b);
         const cropKey = (q && q.cropKey) || (entry && entry.cropKey) || (exp && exp.cropKey) || (b && (b.cropKey || guessCropKey(b.crop))) || 'paddy_a';
         const estimatedQty = firstNumber(q && q.estimatedQty, entry && entry.estimatedQty, exp && exp.estimatedQty, b && b.qty);
         const hubId = (entry && entry.hubId) || hubIdFor(q && q.hubName) || (exp && exp.hubId) || hubIdFor(b && b.centre) || null;
         const weighment = (entry && entry.weighment) || null;
-        const qcStatus = q ? q.status : null;
-        const tested = !!q && q.status !== 'PENDING';
+        // Quality result: the live QC sample, else the snapshot kept for trolleys seeded as already weighed
+        const qcSnap = q ? null : ((entry && entry.qc) || (entry && entry.seeded && WEIGHED_QC[id]) || null);
+        const qcStatus = q ? q.status : (qcSnap ? qcSnap.status : null);
+        const tested = !!qcStatus && qcStatus !== 'PENDING';
+        const qMoisture = q ? q.testedMoisture : (qcSnap ? qcSnap.moisture : null);
+        const qForeign = q ? q.testedForeignMatter : (qcSnap ? qcSnap.foreign : null);
+        const qDamaged = q ? q.testedDamagedGrain : (qcSnap ? qcSnap.damaged : null);
 
         let status = 'BOOKED';
         if (weighment) status = 'WEIGHMENT_COMPLETED';
         else if (tested) status = 'QUALITY_INSPECTED';
         else if (entry || q) status = 'ARRIVED';
 
-        const passed = tested ? q.status !== 'REJECTED' : null;
-        const rate = (b && b.rate) || CROPS[cropKey].msp;
+        const passed = tested ? qcStatus !== 'REJECTED' : null;
+        const rate = (b && b.rate) || (entry && entry.rate) || (entry && entry.seeded && WEIGHED_QC[id] && WEIGHED_QC[id].rate) || CROPS[cropKey].msp;
         const net = weighment ? weighment.net : null;
         const centre = centreById(hubId);
+
+        // Module 5: J-Form approval, hold and PFMS payment move a weighed token on to J_FORM_ISSUED / DBT_DISBURSED
+        const bank = parseBank((entry && entry.farmer && entry.farmer.bank) || (exp && exp.bank) || (q && q.bank) || (b && b.bank) || SEED_BANK[id] || userBank(farmer));
+        const form = dbt.forms[id] || null;
+        const pay = dbt.payments[id] || null;
+        const hold = dbt.holds[id] || null;
+        let dbtStage = 'NOT_STARTED';
+        if (weighment) {
+          if (pay) {
+            dbtStage = payStage(pay, nowTs);
+            status = dbtStage === 'SETTLED' ? 'DBT_DISBURSED' : 'J_FORM_ISSUED';
+          } else if (form) {
+            dbtStage = 'JFORM_ISSUED';
+            status = 'J_FORM_ISSUED';
+          } else if (hold) {
+            dbtStage = 'HELD';
+          }
+        }
 
         out.push({
           tokenId: id,
@@ -441,10 +497,10 @@
             paidAt: null
           },
           qualityReport: tested ? {
-            moisturePct: q.testedMoisture,
-            foreignMatterPct: q.testedForeignMatter,
-            damagedGrainPct: q.testedDamagedGrain,
-            grade: gradeLabel(q.status),
+            moisturePct: qMoisture,
+            foreignMatterPct: qForeign,
+            damagedGrainPct: qDamaged,
+            grade: gradeLabel(qcStatus),
             passed,
             inspectorId: null
           } : null,
@@ -460,8 +516,14 @@
           financials: {
             mspPerQtl: rate,
             totalAmount: Math.round((net !== null ? net : estimatedQty) * rate),
-            dbtStatus: (b && b.dbtStatus) || null
+            dbtStatus: dbtStage,
+            utrNo: pay ? pay.utr : null,
+            bankAccount: bank ? bank.display : null
           },
+          bank,
+          jForm: form,
+          hold,
+          payment: pay ? Object.assign({ stage: payStage(pay, nowTs) }, pay) : null,
           simulated: !!(entry && entry.simulated),
           weighedToday: !!weighment && (weighment.at >= startOfDay(nowFn()) || !!(entry && entry.seeded)),
           inYard: !weighment && (status === 'ARRIVED' || (status === 'QUALITY_INSPECTED' && passed === true))
@@ -518,7 +580,7 @@
       if (tk.status === 'QUALITY_INSPECTED' && tk.qcOutcome === 'REJECTED') {
         return { ok: false, reason: 'Quality rejected — direct farmer to the drying platform, then re-test' };
       }
-      if (tk.status === 'WEIGHMENT_COMPLETED') return { ok: false, reason: 'Weighment already completed' };
+      if (tk.status === 'WEIGHMENT_COMPLETED' || tk.status === 'J_FORM_ISSUED' || tk.status === 'DBT_DISBURSED') return { ok: false, reason: 'Weighment already completed' };
       return { ok: true, reason: '' };
     }
 
@@ -536,7 +598,7 @@
       const gate = getGateState();
       gate.entries[tk.tokenId] = {
         hubId, vehicleNo, lane, gateInAt: now, operator: OPERATOR_ID,
-        farmer: { farmerId: tk.farmerId, farmerName: tk.farmerName, farmerMobile: tk.farmerMobile, village: tk.village, land: tk.land },
+        farmer: { farmerId: tk.farmerId, farmerName: tk.farmerName, farmerMobile: tk.farmerMobile, village: tk.village, land: tk.land, bank: tk.bank ? tk.bank.raw : null },
         entryGate: (o && o.entryGate) || null,
         cropKey: tk.cropKey, estimatedQty: tk.estimatedQty, slotTime: tk.slotTime, bookedHubId: tk.hubId
       };
@@ -604,6 +666,291 @@
       return { ok: true, weighment: entry.weighment };
     }
 
+    // ----- DBT settlement: J-Form approval, holds and simulated PFMS payments (Module 5) -----
+    function emptyDbt() {
+      return { version: 1, forms: {}, holds: {}, payments: {}, batches: [], audit: [], seq: { batch: 0 } };
+    }
+
+    function readDbtState() {
+      const v = read(KEYS.dbt, null);
+      return v && v.forms && v.payments && v.holds && Array.isArray(v.audit) ? v : null;
+    }
+
+    function saveDbtState(state) {
+      write(KEYS.dbt, state);
+    }
+
+    // Dispatched -> In Transit -> Settled, derived from time since dispatch (stamps are written by advancePayments)
+    function payStage(p, now) {
+      const elapsed = now - p.dispatchedAt;
+      if (p.settledAt || elapsed >= DBT_TIMING.settledAfterMs) return 'SETTLED';
+      if (p.inTransitAt || elapsed >= DBT_TIMING.inTransitAfterMs) return 'IN_TRANSIT';
+      return 'DISPATCHED';
+    }
+
+    function parseBank(raw) {
+      if (!raw) return null;
+      const m = /([A-Za-z]+)\s*A\/c\s*\.*\s*(\d{3,4})/i.exec(String(raw));
+      if (!m) return null;
+      const name = m[1].toUpperCase();
+      return { raw: String(raw), name, last4: m[2], masked: `XXXX XXXX ${m[2]}`, display: `${name} • XXXX ${m[2]}`, code: BANK_CODES[name] || 'SBIN' };
+    }
+
+    // Bank account of the farmer who booked on this browser (signup keeps it under kisan_user_<mobile>)
+    function userBank(farmer) {
+      const u = readAuthUser();
+      if (u && u.bank && u.id === farmer.farmerId) return u.bank;
+      const rec = read('kisan_user_' + farmer.farmerMobile, null);
+      if (rec && rec.bank) return rec.bank;
+      return farmer.farmerId === 'FAR-2026-8812' ? 'SBI A/c ...5019' : null;
+    }
+
+    const inr = (n) => Math.round(n).toLocaleString('en-IN');
+
+    function ymd(ts) {
+      const d = new Date(ts);
+      return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // e.g. SBIN202609218819: bank IFSC prefix + date + 4 digits, unique across payments
+    function makeUtr(code, at, dbt) {
+      const used = {};
+      Object.keys(dbt.payments).forEach((k) => { used[dbt.payments[k].utr] = true; });
+      let n = 1000 + ((Object.keys(dbt.payments).length * 7919 + 8819) % 9000);
+      let utr = `${code}${ymd(at)}${n}`;
+      while (used[utr]) { n = 1000 + ((n - 999) % 9000); utr = `${code}${ymd(at)}${n}`; }
+      return utr;
+    }
+
+    function pushAudit(dbt, entry) {
+      dbt.audit.unshift(Object.assign({ ts: nowFn(), actor: DBT_OFFICER.id }, entry));
+      if (dbt.audit.length > 200) dbt.audit.length = 200;
+    }
+
+    // The legal record of an approval: amounts are frozen at the moment the officer signs
+    function frozenForm(tk, at) {
+      const base = CROPS[tk.cropKey].msp;
+      const net = tk.weighmentReport.netWeightQtl;
+      return {
+        jFormId: `JF-2026-${tk.tokenId.replace(/\D/g, '')}`,
+        approvedAt: at,
+        officerId: DBT_OFFICER.id,
+        net,
+        rate: tk.financials.mspPerQtl,
+        baseRate: base,
+        deduction: Math.max(0, base - tk.financials.mspPerQtl),
+        amount: Math.round(net * tk.financials.mspPerQtl),
+        grade: tk.qualityReport ? tk.qualityReport.grade : null,
+        moisturePct: tk.qualityReport ? tk.qualityReport.moisturePct : null
+      };
+    }
+
+    // Pre-approval checklist. `blocking` checks stop the approval; the rest are warnings.
+    function verifyForJForm(tk) {
+      const checks = [];
+      const weighed = !!tk.weighmentReport;
+      checks.push({ key: 'weighment', label: 'Weighment certified at the weighbridge', ok: weighed, blocking: true,
+        detail: weighed ? `${tk.weighmentReport.netWeightQtl.toFixed(2)} Qtl net on scale ${tk.weighmentReport.scaleId}` : 'Not weighed yet' });
+      const qOk = !!(tk.qualityReport && tk.qualityReport.passed);
+      checks.push({ key: 'quality', label: 'Quality certified by the Moisture Lab', ok: qOk, blocking: true,
+        detail: qOk ? `${tk.qualityReport.grade} • ${tk.qualityReport.moisturePct}% moisture` : 'No passing quality certificate' });
+      if (weighed && tk.estimatedQty > 0) {
+        const v = ((tk.weighmentReport.netWeightQtl - tk.estimatedQty) / tk.estimatedQty) * 100;
+        checks.push({ key: 'variance', label: `Net within ±${JFORM_TOLERANCE_PCT}% of the booked quantity`, ok: Math.abs(v) <= JFORM_TOLERANCE_PCT, blocking: false,
+          detail: `${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs ${tk.estimatedQty} Qtl booked` });
+      }
+      checks.push({ key: 'bank', label: 'Aadhaar-linked bank account on file for DBT', ok: !!tk.bank, blocking: true,
+        detail: tk.bank ? tk.bank.display : 'No bank account recorded' });
+      checks.push({ key: 'hold', label: 'Not on hold', ok: !tk.hold, blocking: true,
+        detail: tk.hold ? tk.hold.reason : 'No hold' });
+      return checks;
+    }
+
+    function seedDbtState(now) {
+      const s = emptyDbt();
+      const byId = {};
+      getTokens().forEach((t) => { byId[t.tokenId] = t; });
+      // Earlier today: two settled, two approved and waiting for disbursal, one on hold, the rest awaiting approval
+      const plan = { 'TK-0931': 'SETTLED', 'TK-0934': 'SETTLED', 'TK-0938': 'JFORM', 'TK-0941': 'JFORM', 'TK-0955': 'HOLD' };
+      const settled = [];
+      Object.keys(plan).forEach((id) => {
+        const t = byId[id];
+        if (!t || !t.weighmentReport) return;
+        const weighedAt = t.statusTimeline.weighedAt;
+        if (plan[id] === 'HOLD') {
+          s.holds[id] = { reason: 'Farmer KYC re-verification requested', at: weighedAt + 10 * 60000, officerId: DBT_OFFICER.id };
+          s.audit.unshift({ ts: s.holds[id].at, actor: DBT_OFFICER.id, kind: 'HOLD', tokenId: id, text: `${t.farmerName} placed on hold: ${s.holds[id].reason}` });
+          return;
+        }
+        const form = frozenForm(t, weighedAt + 15 * 60000);
+        s.forms[id] = form;
+        s.audit.unshift({ ts: form.approvedAt, actor: DBT_OFFICER.id, kind: 'JFORM_APPROVED', tokenId: id, amount: form.amount, text: `J-Form ${form.jFormId} issued to ${t.farmerName} (₹${inr(form.amount)})` });
+        if (plan[id] === 'SETTLED' && t.bank) {
+          const dispatchedAt = form.approvedAt + 10 * 60000;
+          s.payments[id] = { utr: makeUtr(t.bank.code, dispatchedAt, s), batchId: `PFMS-B-${ymd(dispatchedAt)}-001`, bank: t.bank.name, last4: t.bank.last4,
+            amount: form.amount, dispatchedAt, inTransitAt: dispatchedAt + DBT_TIMING.inTransitAfterMs, settledAt: dispatchedAt + DBT_TIMING.settledAfterMs };
+          settled.push(id);
+          s.audit.unshift({ ts: dispatchedAt, actor: DBT_OFFICER.id, kind: 'DBT_DISPATCHED', tokenId: id, amount: form.amount, text: `₹${inr(form.amount)} dispatched to ${t.bank.display} (UTR ${s.payments[id].utr})` });
+          s.audit.unshift({ ts: s.payments[id].settledAt, actor: 'PFMS', kind: 'SETTLED', tokenId: id, amount: form.amount, text: `UTR ${s.payments[id].utr} settled in ${t.farmerName}'s account` });
+        }
+      });
+      if (settled.length) {
+        const at = s.payments[settled[0]].dispatchedAt;
+        s.batches.unshift({ id: `PFMS-B-${ymd(at)}-001`, at, count: settled.length, total: settled.reduce((a, id) => a + s.payments[id].amount, 0), tokens: settled });
+        s.seq.batch = 1;
+      }
+      s.audit.sort((a, b) => b.ts - a.ts);
+      return s;
+    }
+
+    function getDbtState() {
+      const existing = readDbtState();
+      if (existing) return existing;
+      const fresh = seedDbtState(nowFn());
+      saveDbtState(fresh);
+      return fresh;
+    }
+
+    // Officer signs a batch of certified procurements: a J-Form is issued for each one that passes the checklist
+    function approveJForms(tokenIds) {
+      const dbt = getDbtState();
+      const now = nowFn();
+      const approved = [];
+      const skipped = [];
+      let total = 0;
+      Array.from(new Set(tokenIds)).forEach((id) => {
+        const tk = getToken(id);
+        if (!tk) { skipped.push({ tokenId: id, reason: 'Token not found' }); return; }
+        if (tk.status === 'J_FORM_ISSUED' || tk.status === 'DBT_DISBURSED') { skipped.push({ tokenId: tk.tokenId, reason: 'J-Form already issued' }); return; }
+        if (tk.status !== 'WEIGHMENT_COMPLETED') { skipped.push({ tokenId: tk.tokenId, reason: 'Weighment not completed yet' }); return; }
+        const bad = verifyForJForm(tk).find((c) => c.blocking && !c.ok);
+        if (bad) { skipped.push({ tokenId: tk.tokenId, reason: `${bad.label}: ${bad.detail}` }); return; }
+        const form = frozenForm(tk, now);
+        dbt.forms[tk.tokenId] = form;
+        pushAudit(dbt, { kind: 'JFORM_APPROVED', tokenId: tk.tokenId, amount: form.amount, text: `J-Form ${form.jFormId} issued to ${tk.farmerName} (₹${inr(form.amount)})` });
+        updateBatchByToken(tk.tokenId, { step: 4, status: 'J-Form Issued (DBT Pending)', dbtStatus: `J-Form ${form.jFormId} approved by ${DBT_OFFICER.role}` });
+        approved.push(tk.tokenId);
+        total += form.amount;
+      });
+      if (approved.length) saveDbtState(dbt);
+      return { approved, skipped, total };
+    }
+
+    function holdTokens(tokenIds, reason) {
+      const dbt = getDbtState();
+      const held = [];
+      const skipped = [];
+      Array.from(new Set(tokenIds)).forEach((id) => {
+        const tk = getToken(id);
+        if (!tk || tk.status !== 'WEIGHMENT_COMPLETED') { skipped.push({ tokenId: id, reason: 'Only certified procurements awaiting a J-Form can be put on hold' }); return; }
+        if (tk.hold) { skipped.push({ tokenId: tk.tokenId, reason: 'Already on hold' }); return; }
+        dbt.holds[tk.tokenId] = { reason: reason || 'Held for review', at: nowFn(), officerId: DBT_OFFICER.id };
+        pushAudit(dbt, { kind: 'HOLD', tokenId: tk.tokenId, text: `${tk.farmerName} placed on hold: ${dbt.holds[tk.tokenId].reason}` });
+        held.push(tk.tokenId);
+      });
+      if (held.length) saveDbtState(dbt);
+      return { held, skipped };
+    }
+
+    function releaseHold(tokenIds) {
+      const dbt = getDbtState();
+      const released = [];
+      Array.from(new Set(tokenIds)).forEach((id) => {
+        if (!dbt.holds[id]) return;
+        const tk = getToken(id);
+        delete dbt.holds[id];
+        pushAudit(dbt, { kind: 'RELEASED', tokenId: id, text: `Hold released for ${tk ? tk.farmerName : id}` });
+        released.push(id);
+      });
+      if (released.length) saveDbtState(dbt);
+      return { released };
+    }
+
+    // Trigger the (simulated) PFMS transfer of the frozen J-Form amount to each farmer's bank account
+    function disburse(tokenIds) {
+      const dbt = getDbtState();
+      const now = nowFn();
+      const dispatched = [];
+      const skipped = [];
+      let total = 0;
+      const batchId = `PFMS-B-${ymd(now)}-${String(dbt.seq.batch + 1).padStart(3, '0')}`;
+      Array.from(new Set(tokenIds)).forEach((id) => {
+        const tk = getToken(id);
+        if (!tk) { skipped.push({ tokenId: id, reason: 'Token not found' }); return; }
+        if (tk.payment) { skipped.push({ tokenId: tk.tokenId, reason: 'Already dispatched' }); return; }
+        if (tk.status !== 'J_FORM_ISSUED' || !tk.jForm) { skipped.push({ tokenId: tk.tokenId, reason: 'No J-Form issued yet' }); return; }
+        if (!tk.bank) { skipped.push({ tokenId: tk.tokenId, reason: 'No bank account recorded' }); return; }
+        const utr = makeUtr(tk.bank.code, now, dbt);
+        dbt.payments[tk.tokenId] = { utr, batchId, bank: tk.bank.name, last4: tk.bank.last4, amount: tk.jForm.amount, dispatchedAt: now, inTransitAt: null, settledAt: null };
+        pushAudit(dbt, { kind: 'DBT_DISPATCHED', tokenId: tk.tokenId, amount: tk.jForm.amount, text: `₹${inr(tk.jForm.amount)} dispatched to ${tk.bank.display} (UTR ${utr})` });
+        updateBatchByToken(tk.tokenId, { step: 4, status: 'DBT Dispatched via PFMS', dbtStatus: `Dispatched (UTR-${utr})` });
+        dispatched.push(tk.tokenId);
+        total += tk.jForm.amount;
+      });
+      if (dispatched.length) {
+        dbt.seq.batch += 1;
+        dbt.batches.unshift({ id: batchId, at: now, count: dispatched.length, total, tokens: dispatched });
+        saveDbtState(dbt);
+      }
+      return { dispatched, skipped, total, batchId: dispatched.length ? batchId : null };
+    }
+
+    // Move due payments on (In Transit, then Settled), keep the farmer's record in step and log each transition
+    function advancePayments() {
+      const dbt = readDbtState();
+      if (!dbt) return [];
+      const now = nowFn();
+      const changes = [];
+      Object.keys(dbt.payments).forEach((id) => {
+        const p = dbt.payments[id];
+        if (p.settledAt) return;
+        const elapsed = now - p.dispatchedAt;
+        if (!p.inTransitAt && elapsed >= DBT_TIMING.inTransitAfterMs) {
+          p.inTransitAt = p.dispatchedAt + DBT_TIMING.inTransitAfterMs;
+          dbt.audit.unshift({ ts: p.inTransitAt, actor: 'PFMS', kind: 'IN_TRANSIT', tokenId: id, amount: p.amount, text: `UTR ${p.utr} in transit to ${p.bank} • XXXX ${p.last4}` });
+          updateBatchByToken(id, { step: 4, status: 'DBT In Transit (PFMS)', dbtStatus: `In Transit (UTR-${p.utr})` });
+          changes.push({ tokenId: id, stage: 'IN_TRANSIT' });
+        }
+        if (!p.settledAt && elapsed >= DBT_TIMING.settledAfterMs) {
+          p.settledAt = p.dispatchedAt + DBT_TIMING.settledAfterMs;
+          dbt.audit.unshift({ ts: p.settledAt, actor: 'PFMS', kind: 'SETTLED', tokenId: id, amount: p.amount, text: `UTR ${p.utr} settled: ₹${inr(p.amount)} credited to ${p.bank} • XXXX ${p.last4}` });
+          updateBatchByToken(id, { step: 5, status: 'Procured & Paid', dbtStatus: `Disbursed (UTR-${p.utr})` });
+          changes.push({ tokenId: id, stage: 'SETTLED' });
+        }
+      });
+      if (changes.length) {
+        dbt.audit.sort((a, b) => b.ts - a.ts);
+        if (dbt.audit.length > 200) dbt.audit.length = 200;
+        saveDbtState(dbt);
+      }
+      return changes;
+    }
+
+    // Demo helper: make in-flight payments due now (the bank "processes" them immediately)
+    function fastForwardPayments(tokenIds) {
+      const dbt = readDbtState();
+      if (!dbt) return [];
+      const only = tokenIds && tokenIds.length ? new Set(tokenIds) : null;
+      let n = 0;
+      Object.keys(dbt.payments).forEach((id) => {
+        const p = dbt.payments[id];
+        if (p.settledAt || (only && !only.has(id))) return;
+        p.dispatchedAt = Math.min(p.dispatchedAt, nowFn() - DBT_TIMING.settledAfterMs - 1);
+        n += 1;
+      });
+      if (n) {
+        pushAudit(dbt, { kind: 'FAST_FORWARD', tokenId: null, text: `Bank processing fast-forwarded for ${n} payment${n === 1 ? '' : 's'} (demo)` });
+        saveDbtState(dbt);
+      }
+      return advancePayments();
+    }
+
+    function addAudit(kind, text, extra) {
+      const dbt = getDbtState();
+      pushAudit(dbt, Object.assign({ kind, tokenId: null, text }, extra || {}));
+      saveDbtState(dbt);
+    }
+
     // ----- Admin simulation helpers -----
     function simulateSurge(hubId, count) {
       const gate = getGateState();
@@ -642,6 +989,9 @@
       getAdminState, saveAdminState, countersFor, setCounterOpen,
       getTokens, getToken, findTokens, pickLane, weighReadiness, checkIn, recordWeighment,
       simulateSurge, clearSimulated,
+      DBT_TIMING, DBT_OFFICER, JFORM_TOLERANCE_PCT,
+      readDbtState, getDbtState, saveDbtState, paymentStage: payStage, parseBank, verifyForJForm,
+      approveJForms, holdTokens, releaseHold, disburse, advancePayments, fastForwardPayments, addAudit,
       now: nowFn
     };
   }
