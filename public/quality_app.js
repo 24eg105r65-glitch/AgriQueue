@@ -63,9 +63,61 @@
   // Shared data layer (ops_store.js): farmer booking records, incl. their default seed records
   const store = window.AgriQueueStore;
 
-  // ₹/Qtl value cut for moisture above the crop's standard limit
+  function esc(v) {
+    return String(v === undefined || v === null ? "" : v).replace(/[&<>"']/g, (c) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  // ₹/Qtl value cut for moisture above the crop's standard limit (excess counted in whole tenths: no float noise)
   function deductionFor(std, moisture) {
-    return Math.round(Math.max(0, moisture - std.maxMoisture) * std.deductionPerExcessPct);
+    const tenths = Math.max(0, Math.round((moisture - std.maxMoisture) * 10));
+    return Math.round(tenths * std.deductionPerExcessPct / 10);
+  }
+
+  // Foreign matter may exceed its limit by 1.0 and damaged grain by 2.0 before the lot is rejected outright
+  const FOREIGN_TOLERANCE = 1.0;
+  const DAMAGED_TOLERANCE = 2.0;
+
+  // The single Grade A / Grade B / Reject decision, with the reasons behind it
+  function evaluateSample(std, moisture, foreign, damaged) {
+    const reject = [];
+    if (moisture > std.maxToleranceMoisture) reject.push("moisture");
+    if (foreign > std.maxForeignMatter + FOREIGN_TOLERANCE) reject.push("foreign");
+    if (damaged > std.maxDamagedGrain + DAMAGED_TOLERANCE) reject.push("damaged");
+    if (reject.length) return { decision: "REJECTED", status: "REJECTED", deduction: 0, reasons: reject };
+
+    const over = [];
+    if (moisture > std.maxMoisture) over.push("moisture");
+    if (foreign > std.maxForeignMatter) over.push("foreign");
+    if (damaged > std.maxDamagedGrain) over.push("damaged");
+    if (!over.length) return { decision: "PASS_GRADE_A", status: "PASSED_GRADE_A", deduction: 0, reasons: [] };
+    return { decision: "PASS_DEDUCTION", status: "PASSED_DEDUCTION", deduction: deductionFor(std, moisture), reasons: over };
+  }
+
+  const REASON_NAME = { moisture: "moisture", foreign: "foreign matter", damaged: "damaged grain" };
+  const reasonList = (reasons) => reasons.map((r) => REASON_NAME[r]).join(" and ");
+
+  // What the operator should tell the farmer, depending on why the lot failed
+  function rejectAdvice(reasons) {
+    const parts = [];
+    if (reasons.indexOf("moisture") !== -1) parts.push("sun-dry the lot for 12-18 daylight hours");
+    if (reasons.indexOf("foreign") !== -1) parts.push("clean / winnow out chaff, dust and mud");
+    if (reasons.indexOf("damaged") !== -1) parts.push("sort out damaged and discoloured grain");
+    return `Advice: ${parts.join(", ")}, then bring the lot back for re-inspection.`;
+  }
+
+  // Current sliders / inputs, clamped to their physical range. moisture is null while the field is blank.
+  function currentReadings() {
+    const read = (input, min, max, blank) => {
+      const v = parseFloat(input.value);
+      return isNaN(v) ? blank : Math.max(min, Math.min(max, v));
+    };
+    return {
+      moisture: read(el.moistureInput, 5.0, 25.0, null),
+      foreign: read(el.foreignInput, 0, 5.0, 0),
+      damaged: read(el.damagedInput, 0, 10.0, 0)
+    };
   }
 
   // Seed Queue of Arrived Trolleys for Lab Inspection
@@ -258,7 +310,8 @@
     const raw = localStorage.getItem("agriqueue_qc_samples");
     if (raw) {
       try {
-        samplesQueue = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        samplesQueue = Array.isArray(parsed) ? parsed : INITIAL_LAB_SAMPLES;
       } catch (e) {
         samplesQueue = INITIAL_LAB_SAMPLES;
       }
@@ -273,7 +326,7 @@
   function mergeStoredSamples() {
     try {
       const stored = JSON.parse(localStorage.getItem("agriqueue_qc_samples") || "[]");
-      stored.forEach(s => {
+      (Array.isArray(stored) ? stored : []).forEach(s => {
         if (!samplesQueue.some(m => m.tokenId === s.tokenId)) samplesQueue.push(s);
       });
     } catch (e) {}
@@ -281,7 +334,9 @@
 
   function saveSamples() {
     mergeStoredSamples();
-    localStorage.setItem("agriqueue_qc_samples", JSON.stringify(samplesQueue));
+    try {
+      localStorage.setItem("agriqueue_qc_samples", JSON.stringify(samplesQueue));
+    } catch (e) { /* storage blocked or full: the lab keeps working from memory */ }
     updateTopMetrics();
   }
 
@@ -464,20 +519,20 @@
       }
 
       return `
-        <div class="qc-queue-card ${isSelected ? 'active' : ''}" data-token="${s.tokenId}">
+        <div class="qc-queue-card ${isSelected ? 'active' : ''}" data-token="${esc(s.tokenId)}">
           <div class="qc-card-top">
-            <div class="qc-card-token">${s.tokenId}</div>
+            <div class="qc-card-token">${esc(s.tokenId)}</div>
             ${statusBadge}
           </div>
-          <div class="qc-card-farmer">${s.farmerName}</div>
+          <div class="qc-card-farmer">${esc(s.farmerName)}</div>
           <div class="qc-card-details">
-            <span>🌾 <strong>${s.cropName}</strong></span> • 
-            <span>⚖️ <strong>${s.estimatedQty} Qtl</strong></span> • 
-            <span>🚛 <strong>${s.vehicleNo}</strong></span>
+            <span>🌾 <strong>${esc(s.cropName)}</strong></span> • 
+            <span>⚖️ <strong>${esc(s.estimatedQty)} Qtl</strong></span> • 
+            <span>🚛 <strong>${esc(s.vehicleNo)}</strong></span>
           </div>
           <div class="qc-card-footer">
-            <span>🕒 Arrived: ${s.arrivedTime}</span>
-            <span style="color: var(--color-primary-dark); font-weight: 600;">${s.assignedLane}</span>
+            <span>🕒 Arrived: ${esc(s.arrivedTime)}</span>
+            <span style="color: var(--color-primary-dark); font-weight: 600;">${esc(s.assignedLane)}</span>
           </div>
         </div>
       `;
@@ -583,9 +638,23 @@
     if (!sample) return;
 
     const std = FCI_QUALITY_STANDARDS[sample.cropKey] || FCI_QUALITY_STANDARDS.paddy_a;
-    const moisture = parseFloat(el.moistureInput.value) || 12.0;
-    const foreign = parseFloat(el.foreignInput.value) || 0.4;
-    const damaged = parseFloat(el.damagedInput.value) || 0.8;
+    const r = currentReadings();
+    const baseMsp = std.baseMsp;
+
+    // A blank moisture field gives nothing to decide on (no invented reading)
+    if (r.moisture === null) {
+      el.btnCertifyGradeA.style.display = "none";
+      el.btnApproveDeduction.style.display = "none";
+      el.btnRejectSample.style.display = "none";
+      if (el.decisionBadge) el.decisionBadge.innerHTML = `<span class="qc-decision-badge badge-grade-b">Enter the moisture reading to get a quality decision</span>`;
+      if (el.decisionNotice) el.decisionNotice.textContent = "Use the moisture meter probe, a preset or type the reading from the analyzer.";
+      if (el.calcBaseMsp) el.calcBaseMsp.textContent = `₹${baseMsp.toLocaleString("en-IN")} / Qtl`;
+      if (el.calcDeduction) el.calcDeduction.textContent = "—";
+      if (el.calcFinalRate) el.calcFinalRate.textContent = "—";
+      if (el.calcTotalPayout) el.calcTotalPayout.textContent = "—";
+      return;
+    }
+    const { moisture, foreign, damaged } = r;
 
     // Update Live Gauge Visual
     if (el.gaugeVal) el.gaugeVal.textContent = `${moisture.toFixed(1)}%`;
@@ -598,39 +667,42 @@
       el.gaugeNeedle.style.transform = `rotate(${angleDeg}deg)`;
     }
 
-    // Determine status zone
-    let decision = 'PASS_GRADE_A';
-    let deductionPerQtl = 0;
+    const verdict = evaluateSample(std, moisture, foreign, damaged);
+    const deductionPerQtl = verdict.deduction;
     let badgeHtml = '';
     let noticeText = '';
 
-    if (moisture <= std.maxMoisture && foreign <= std.maxForeignMatter && damaged <= std.maxDamagedGrain) {
+    if (verdict.decision === 'PASS_GRADE_A') {
       // 100% Grade A Pass
-      decision = 'PASS_GRADE_A';
-      deductionPerQtl = 0;
       if (el.gaugeStatusPill) {
         el.gaugeStatusPill.className = "gauge-pill status-pill-optimal";
         el.gaugeStatusPill.textContent = "✓ Optimal Moisture (Grade A)";
       }
       badgeHtml = `<span class="qc-decision-badge badge-grade-a">✓ Grade A (100% Government MSP - No Deduction)</span>`;
       noticeText = `✅ Moisture (${moisture.toFixed(1)}%) is within standard FCI limits (≤ ${std.maxMoisture}%). Eligible for 100% MSP payout without value cut.`;
-      
+
       el.btnCertifyGradeA.style.display = "inline-flex";
       el.btnApproveDeduction.style.display = "none";
       el.btnRejectSample.style.display = "none";
 
-    } else if (moisture <= std.maxToleranceMoisture && foreign <= (std.maxForeignMatter + 1.0)) {
-      // Grade B with deduction
-      decision = 'PASS_DEDUCTION';
+    } else if (verdict.decision === 'PASS_DEDUCTION') {
+      // Grade B (moisture cut and/or purity above the Grade A limits)
       const excessMoisture = Math.max(0, moisture - std.maxMoisture);
-      deductionPerQtl = deductionFor(std, moisture);
+      const moistureOnly = verdict.reasons.length === 1 && verdict.reasons[0] === 'moisture';
 
       if (el.gaugeStatusPill) {
         el.gaugeStatusPill.className = "gauge-pill status-pill-warning";
-        el.gaugeStatusPill.textContent = `⚠️ Moderate Moisture (+${excessMoisture.toFixed(1)}% Excess)`;
+        el.gaugeStatusPill.textContent = moistureOnly
+          ? `⚠️ Moderate Moisture (+${excessMoisture.toFixed(1)}% Excess)`
+          : (verdict.reasons.indexOf('moisture') !== -1 ? `⚠️ Moisture +${excessMoisture.toFixed(1)}% and Purity Below Grade A` : `⚠️ Purity Below Grade A (${reasonList(verdict.reasons)})`);
       }
-      badgeHtml = `<span class="qc-decision-badge badge-grade-b">⚠️ Grade B Pass (Moisture Deduction: -₹${deductionPerQtl}/Qtl)</span>`;
-      noticeText = `⚠️ Moisture (${moisture.toFixed(1)}%) exceeds standard limit of ${std.maxMoisture}% by +${excessMoisture.toFixed(1)}%. Government value cut of ₹${deductionPerQtl}/Qtl applied.`;
+      badgeHtml = deductionPerQtl > 0
+        ? `<span class="qc-decision-badge badge-grade-b">⚠️ Grade B Pass (Moisture Deduction: -₹${deductionPerQtl}/Qtl)</span>`
+        : `<span class="qc-decision-badge badge-grade-b">⚠️ Grade B Pass (${esc(reasonList(verdict.reasons))} above Grade A limit, no moisture cut)</span>`;
+      noticeText = deductionPerQtl > 0
+        ? `⚠️ Moisture (${moisture.toFixed(1)}%) exceeds standard limit of ${std.maxMoisture}% by +${excessMoisture.toFixed(1)}%. Government value cut of ₹${deductionPerQtl}/Qtl applied.`
+        : `⚠️ ${reasonList(verdict.reasons)} above the Grade A limit (foreign matter ≤ ${std.maxForeignMatter}%, damaged grain ≤ ${std.maxDamagedGrain}%). Passed as Grade B without a moisture cut.`;
+      if (deductionPerQtl > 0 && verdict.reasons.length > 1) noticeText += ` Also above Grade A limit: ${reasonList(verdict.reasons.filter(x => x !== 'moisture'))}.`;
 
       el.btnCertifyGradeA.style.display = "none";
       el.btnApproveDeduction.style.display = "inline-flex";
@@ -638,14 +710,23 @@
 
     } else {
       // Reject
-      decision = 'REJECTED';
-      deductionPerQtl = 0;
+      const only = verdict.reasons.length === 1 ? verdict.reasons[0] : null;
+      const pill = only === 'moisture' ? "⛔ High Moisture (Unsafe for Mandi Storage)"
+        : only === 'foreign' ? "⛔ Excess Foreign Matter"
+        : only === 'damaged' ? "⛔ Excess Damaged Grain"
+        : "⛔ Fails Several FCI Limits";
       if (el.gaugeStatusPill) {
         el.gaugeStatusPill.className = "gauge-pill status-pill-danger";
-        el.gaugeStatusPill.textContent = `⛔ High Moisture (Unsafe for Mandi Storage)`;
+        el.gaugeStatusPill.textContent = pill;
       }
-      badgeHtml = `<span class="qc-decision-badge badge-grade-reject">⛔ REJECTED (High Moisture & Mold Hazard)</span>`;
-      noticeText = `⛔ Moisture (${moisture.toFixed(1)}%) exceeds max permissible safety limit (${std.maxToleranceMoisture}%). Mandi storage risk. Recommended sun-drying: 12-18 daylight hours before re-inspection.`;
+      badgeHtml = only === 'moisture'
+        ? `<span class="qc-decision-badge badge-grade-reject">⛔ REJECTED (High Moisture & Mold Hazard)</span>`
+        : `<span class="qc-decision-badge badge-grade-reject">⛔ REJECTED (${esc(reasonList(verdict.reasons))} beyond permissible limit)</span>`;
+      const facts = [];
+      if (verdict.reasons.indexOf('moisture') !== -1) facts.push(`Moisture (${moisture.toFixed(1)}%) exceeds max permissible safety limit (${std.maxToleranceMoisture}%). Mandi storage risk.`);
+      if (verdict.reasons.indexOf('foreign') !== -1) facts.push(`Foreign matter (${foreign.toFixed(2)}%) exceeds the permissible ${(std.maxForeignMatter + FOREIGN_TOLERANCE).toFixed(2)}%.`);
+      if (verdict.reasons.indexOf('damaged') !== -1) facts.push(`Damaged grain (${damaged.toFixed(1)}%) exceeds the permissible ${(std.maxDamagedGrain + DAMAGED_TOLERANCE).toFixed(1)}%.`);
+      noticeText = `⛔ ${facts.join(' ')} ${only === 'moisture' ? 'Recommended sun-drying: 12-18 daylight hours before re-inspection.' : rejectAdvice(verdict.reasons)}`;
 
       el.btnCertifyGradeA.style.display = "none";
       el.btnApproveDeduction.style.display = "none";
@@ -656,7 +737,6 @@
     if (el.decisionNotice) el.decisionNotice.textContent = noticeText;
 
     // Financial calculations
-    const baseMsp = std.baseMsp;
     const finalRate = Math.max(0, baseMsp - deductionPerQtl);
     const totalPayout = Math.round(sample.estimatedQty * finalRate);
 
@@ -673,25 +753,44 @@
     const sample = samplesQueue.find(s => s.tokenId === currentSampleId);
     if (!sample) return;
 
-    const moisture = parseFloat(el.moistureInput.value);
-    const foreign = parseFloat(el.foreignInput.value);
-    const damaged = parseFloat(el.damagedInput.value);
-    const std = FCI_QUALITY_STANDARDS[sample.cropKey] || FCI_QUALITY_STANDARDS.paddy_a;
+    const r = currentReadings();
+    if (r.moisture === null) {
+      alert("Please enter the moisture reading first.");
+      return;
+    }
+    // Once a lot has been weighed its quality result is part of the certified procurement
+    if (store) {
+      const tk = store.getToken(sample.tokenId);
+      if (tk && tk.weighmentReport) {
+        alert("This lot has already been weighed at the weighbridge, so its quality result can no longer be changed.");
+        return;
+      }
+    }
 
-    sample.status = decisionStatus;
-    sample.testedMoisture = moisture;
-    sample.testedForeignMatter = foreign;
-    sample.testedDamagedGrain = damaged;
+    const std = FCI_QUALITY_STANDARDS[sample.cropKey] || FCI_QUALITY_STANDARDS.paddy_a;
+    const verdict = evaluateSample(std, r.moisture, r.foreign, r.damaged);
+    if (verdict.status !== decisionStatus) {
+      // the readings no longer support the button that was pressed: show the right one instead
+      recalculateQuality();
+      return;
+    }
+
+    sample.status = verdict.status;
+    sample.testedMoisture = r.moisture;
+    sample.testedForeignMatter = r.foreign;
+    sample.testedDamagedGrain = r.damaged;
+    sample.decisionReasons = verdict.reasons;
+    const moisture = r.moisture;
 
     // Save to local storage queue
     saveSamples();
     renderQueue();
 
     // Sync with Shared Farmer Batches (`kisan_procurement_batches`)
-    syncWithSharedFarmerBatches(sample, decisionStatus, moisture, std);
+    syncWithSharedFarmerBatches(sample, verdict.status, moisture, std);
 
     // Speak announcement
-    announceQCResult(sample, decisionStatus, moisture);
+    announceQCResult(sample, verdict.status, moisture);
 
     // Show Certificate
     openCertificateModal();
@@ -707,11 +806,12 @@
       const gradeName = decisionStatus === 'PASSED_DEDUCTION' ? 'Grade B' : 'Grade A';
       const deduction = decisionStatus === 'PASSED_DEDUCTION' ? deductionFor(std, moisture) : 0;
       const netRate = Math.max(0, std.baseMsp - deduction);
+      const rejectLabel = (sample.decisionReasons || ['moisture']).indexOf('moisture') !== -1 ? 'Moisture High' : 'Purity Below Limit';
 
       if (matched) {
         // Steps: 1 Slot, 2 Gate, 3 Moisture, 4 Weight, 5 DBT. A pass completes step 3; a reject stays at the gate.
         matched.step = isPass ? Math.max(matched.step || 0, 3) : 2;
-        matched.moisture = `${moisture.toFixed(1)}% (${isPass ? gradeName + ' Passed' : 'Moisture High'})`;
+        matched.moisture = `${moisture.toFixed(1)}% (${isPass ? gradeName + ' Passed' : rejectLabel})`;
         matched.status = isPass ? "Quality Certified (Weighment in Progress)" : "Quality Recheck Required";
         matched.dbtStatus = isPass ? "Approved by Quality Lab" : "QC Hold";
         if (isPass) {
@@ -730,6 +830,12 @@
           slot: "Today Active Slot",
           status: isPass ? "Quality Certified (Weighment in Progress)" : "Quality Hold",
           moisture: `${moisture.toFixed(1)}% (${isPass ? gradeName + ' Pass' : 'Recheck'})`,
+          farmerId: sample.farmerId,
+          farmerName: sample.farmerName,
+          farmerMobile: sample.farmerMobile,
+          village: sample.village,
+          land: sample.land,
+          vehicleNo: sample.vehicleNo,
           rate: netRate,
           total: Math.round(sample.estimatedQty * netRate),
           dbtStatus: isPass ? "QC Verified • Weighbridge Dispatched" : "QC Hold",
@@ -753,7 +859,10 @@
     } else if (decisionStatus === 'PASSED_DEDUCTION') {
       text = `Token ${sample.tokenId}, quality approved Grade B with moisture deduction. Moisture ${moisture.toFixed(1)} percent. Proceeding to weighment.`;
     } else {
-      text = `Token ${sample.tokenId}, quality rejected due to high moisture ${moisture.toFixed(1)} percent. Drying advice slip generated.`;
+      const reasons = sample.decisionReasons || ['moisture'];
+      text = reasons.length === 1 && reasons[0] === 'moisture'
+        ? `Token ${sample.tokenId}, quality rejected due to high moisture ${moisture.toFixed(1)} percent. Drying advice slip generated.`
+        : `Token ${sample.tokenId}, quality rejected: ${reasonList(reasons)} beyond the permissible limit. Advice slip generated.`;
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -786,12 +895,17 @@
     if (!sample || !el.certModal) return;
 
     const std = FCI_QUALITY_STANDARDS[sample.cropKey] || FCI_QUALITY_STANDARDS.paddy_a;
-    const moisture = sample.testedMoisture || parseFloat(el.moistureInput.value);
-    const foreign = sample.testedForeignMatter || parseFloat(el.foreignInput.value);
-    const damaged = sample.testedDamagedGrain || parseFloat(el.damagedInput.value);
+    const live = currentReadings();
+    const moisture = sample.testedMoisture !== null && sample.testedMoisture !== undefined ? sample.testedMoisture : (live.moisture === null ? 0 : live.moisture);
+    const foreign = sample.testedForeignMatter !== null && sample.testedForeignMatter !== undefined ? sample.testedForeignMatter : live.foreign;
+    const damaged = sample.testedDamagedGrain !== null && sample.testedDamagedGrain !== undefined ? sample.testedDamagedGrain : live.damaged;
 
     const isGradeA = sample.status === 'PASSED_GRADE_A';
     const isReject = sample.status === 'REJECTED';
+    const reasons = sample.decisionReasons || (isReject ? ['moisture'] : []);
+
+    // Compliance of each parameter against its FCI limit (no parameter is assumed to pass)
+    const flag = (ok, okText, badText) => `<span style="color: ${ok ? '#16a34a' : '#ea580c'}; font-weight: 700;">${ok ? okText : badText}</span>`;
 
     const certContent = document.getElementById("certificate-print-area");
     if (certContent) {
@@ -800,13 +914,13 @@
           <div class="cert-header">
             <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">Government of India • Ministry of Agriculture & Farmers Welfare</div>
             <h2 style="font-size: 1.35rem; color: var(--color-primary-dark); margin: 0.35rem 0;">OFFICIAL GRAIN QUALITY & MOISTURE CERTIFICATE</h2>
-            <div style="font-size: 0.82rem; color: #334155;">Food Corporation of India (FCI) Standards • Central Procurement Hub: <strong>${sample.hubName}</strong></div>
+            <div style="font-size: 0.82rem; color: #334155;">Food Corporation of India (FCI) Standards • Central Procurement Hub: <strong>${esc(sample.hubName)}</strong></div>
           </div>
 
           <div class="cert-meta-grid">
             <div>
               <span class="cert-label">Certificate ID:</span>
-              <strong class="cert-val" style="font-family: var(--font-mono);">QC-2026-${sample.tokenId.replace('TK-', '')}-88</strong>
+              <strong class="cert-val" style="font-family: var(--font-mono);">QC-2026-${esc(sample.tokenId.replace('TK-', ''))}-88</strong>
             </div>
             <div>
               <span class="cert-label">Date & Time:</span>
@@ -814,19 +928,19 @@
             </div>
             <div>
               <span class="cert-label">Token / Lot No:</span>
-              <strong class="cert-val" style="font-family: var(--font-mono); color: var(--color-primary-dark);">${sample.tokenId}</strong>
+              <strong class="cert-val" style="font-family: var(--font-mono); color: var(--color-primary-dark);">${esc(sample.tokenId)}</strong>
             </div>
             <div>
               <span class="cert-label">Farmer Name & ID:</span>
-              <strong class="cert-val">${sample.farmerName} (${sample.farmerId})</strong>
+              <strong class="cert-val">${esc(sample.farmerName)} (${esc(sample.farmerId)})</strong>
             </div>
             <div>
               <span class="cert-label">Crop & Variety:</span>
-              <strong class="cert-val">${sample.cropName}</strong>
+              <strong class="cert-val">${esc(sample.cropName)}</strong>
             </div>
             <div>
               <span class="cert-label">Vehicle / Trolley:</span>
-              <strong class="cert-val">${sample.vehicleNo}</strong>
+              <strong class="cert-val">${esc(sample.vehicleNo)}</strong>
             </div>
           </div>
 
@@ -844,19 +958,19 @@
                 <td><strong>Moisture Content</strong></td>
                 <td>≤ ${std.maxMoisture.toFixed(1)}%</td>
                 <td><strong style="font-family: var(--font-mono); font-size: 1rem;">${moisture.toFixed(1)}%</strong></td>
-                <td><span style="color: ${moisture <= std.maxMoisture ? '#16a34a' : '#ea580c'}; font-weight: 700;">${moisture <= std.maxMoisture ? '✓ Within Limit' : '⚠️ Excess Moisture'}</span></td>
+                <td>${flag(moisture <= std.maxMoisture, '✓ Within Limit', '⚠️ Excess Moisture')}</td>
               </tr>
               <tr>
                 <td><strong>Foreign Matter / Chaff</strong></td>
                 <td>≤ ${std.maxForeignMatter.toFixed(2)}%</td>
                 <td>${foreign.toFixed(2)}%</td>
-                <td><span style="color: #16a34a; font-weight: 700;">✓ Pass</span></td>
+                <td>${flag(foreign <= std.maxForeignMatter, '✓ Within Limit', '⚠️ Above Limit')}</td>
               </tr>
               <tr>
                 <td><strong>Damaged / Discolored Grains</strong></td>
                 <td>≤ ${std.maxDamagedGrain.toFixed(1)}%</td>
                 <td>${damaged.toFixed(1)}%</td>
-                <td><span style="color: #16a34a; font-weight: 700;">✓ Pass</span></td>
+                <td>${flag(damaged <= std.maxDamagedGrain, '✓ Within Limit', '⚠️ Above Limit')}</td>
               </tr>
             </tbody>
           </table>
@@ -866,7 +980,11 @@
               ${isReject ? '⛔ STATUS: REJECTED FOR PROCUREMENT' : (isGradeA ? '✓ STATUS: CERTIFIED GRADE A (FULL MSP ELIGIBLE)' : '⚠️ STATUS: CERTIFIED GRADE B (WITH APPLICABLE DEDUCTIONS)')}
             </div>
             <div style="font-size: 0.82rem; color: #475569; margin-top: 0.35rem;">
-              ${isReject ? 'Grain moisture exceeds maximum permissible storage limit. Direct farmer to drying platform.' : `Assigned Weighbridge: <strong>${sample.assignedLane}</strong>. Moisture Certificate cryptographically signed.`}
+              ${isReject
+                ? (reasons.length === 1 && reasons[0] === 'moisture'
+                  ? 'Grain moisture exceeds maximum permissible storage limit. Direct farmer to drying platform.'
+                  : `Lot fails the FCI limit for ${esc(reasonList(reasons))}. ${esc(rejectAdvice(reasons))}`)
+                : `Assigned Weighbridge: <strong>${esc(sample.assignedLane)}</strong>. Moisture Certificate cryptographically signed.`}
             </div>
           </div>
 
