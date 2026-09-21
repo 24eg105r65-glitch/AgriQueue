@@ -30,9 +30,14 @@ AgriQueue is an end-to-end multi-stakeholder Farmer Crop Procurement, Digital We
    - Real-time procurement quotas vs actuals progress per crop.
    - M/M/c Erlang-C congestion alert system & arrival surge simulation.
 
-5. **🔐 Module 5: Farmer Auth & KYC Portal** (`login.html` / `signup.html`)
+5. **🏦 Module 5: FCI & Government DBT Settlement** (`dbt_portal.html`)
+   - Batch J-Form approval with a pre-approval checklist (weighment, quality, bank account, hold) and per-token skip reasons.
+   - Simulated PFMS banking engine: batches, UTR numbers and automatic Dispatched → In Transit → Settled tracking (settlement ticks the farmer's *DBT Paid* step).
+   - Holds, an audit log of every action, printable J-Forms, and procurement-register export to CSV (Excel) and PDF.
+
+**Farmer Auth & KYC** (`login.html` / `signup.html`)
    - 1-click demo logins (`Ramesh Chand`, `Sukhwinder Singh`, `Venkat Rao`).
-   - Aadhaar, landholding & DBT bank account verification.
+   - Aadhaar, landholding & DBT bank account capture (the bank account is what Module 5 pays into).
 
 ---
 
@@ -62,5 +67,6 @@ Access the stakeholder portals:
 - **Gate & Weighbridge**: `http://localhost:3000/gate_operator.html`
 - **Quality Lab**: `http://localhost:3000/quality_inspector.html`
 - **Mandi Admin**: `http://localhost:3000/admin_dashboard.html`
+- **DBT Settlement**: `http://localhost:3000/dbt_portal.html`
 - **Farmer Login**: `http://localhost:3000/login.html`
 

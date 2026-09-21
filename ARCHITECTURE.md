@@ -109,13 +109,14 @@ Every procurement transaction follows a deterministic finite-state machine acros
 
 ---
 
-### 🏦 Module 5: FCI & Government DBT Settlement Portal (`dbt_portal.html`)
+### 🏦 Module 5: FCI & Government DBT Settlement Portal (`dbt_portal.html`) - *[Completed]*
 * **Role**: Transparency auditor, J-Form verification, and banking disburse engine.
-* **Key Features to Build**:
-  - **Batch J-Form Approvals**: Digital sign-off on certified procurements.
-  - **DBT Banking Engine (PFMS Mock)**: Real-time trigger of MSP funds to Farmer's Aadhaar-linked account.
-  - **Farmer Payment Status Tracking**: Dispatched $\rightarrow$ In Transit $\rightarrow$ Settled (UTR number generator).
-  - **Audit Logs & Export**: Export procurement reports in CSV/Excel/PDF for state agriculture departments.
+* **Key Features (Built)**:
+  - **Batch J-Form Approvals**: The officer ticks certified procurements (weighed by Module 2, quality-passed by Module 3) and approves them in one batch. Each one is checked first: weighment certified, quality passed, Aadhaar-linked bank account on file, not on hold (blocking), and net weight within ±10% of the booked quantity (warning). Failures are skipped with the reason while the rest of the batch goes through. Approved amounts are frozen on the J-Form (net weight × rate after any Grade B moisture deduction). Procurements can be placed on hold with a reason and released later.
+  - **DBT Banking Engine (PFMS Mock)**: "Disburse via PFMS" dispatches the frozen J-Form amount to each farmer's bank account in one PFMS batch (`PFMS-B-yyyymmdd-nnn`) with a generated UTR (`SBIN` / `PUNB` / … + date + 4 digits).
+  - **Farmer Payment Status Tracking**: Dispatched $\rightarrow$ In Transit $\rightarrow$ Settled, advancing automatically (15 s / 40 s in this demo, with a live progress bar and a *Fast-forward bank* button). The farmer's record follows: J-Form issued and dispatched keep the timeline at *Weight* (step 4); only *Settled* ticks *DBT Paid* (step 5) and shows the UTR.
+  - **Audit Logs & Export**: Every approval, hold, release, dispatch, transit, settlement and export is logged with the acting officer. The procurement register exports as **CSV** (UTF-8 with BOM, opens in Excel; follows the list filter) or as a print-ready register for **PDF** (browser *Save as PDF*). J-Forms open as a printable document.
+  - **Token states**: extends the state machine to `WEIGHMENT_COMPLETED` $\rightarrow$ `J_FORM_ISSUED` $\rightarrow$ `DBT_DISBURSED` (settled). The PFMS and bank integration is simulated.
 
 ---
 
@@ -172,7 +173,7 @@ Teammates building other dashboards should read and write data using this standa
 
 ### B. Shared Storage Keys (browser `localStorage`, no backend yet)
 
-The modules exchange data through `localStorage`; `public/ops_store.js` (`window.AgriQueueStore`) is the shared adapter used by Modules 2 and 4 and by Module 3's write-back to the farmer records. `AgriQueueStore.getTokens()` returns one merged view shaped like the `TokenSchema` above, with `status` derived from the Section 2 state machine (from gate entries + the QC result, not from the farmer record's numeric `step`).
+The modules exchange data through `localStorage`; `public/ops_store.js` (`window.AgriQueueStore`) is the shared adapter used by Modules 2 and 4 and by Module 3's write-back to the farmer records. `AgriQueueStore.getTokens()` returns one merged view shaped like the `TokenSchema` above, with `status` derived from the Section 2 state machine, `BOOKED` → … → `WEIGHMENT_COMPLETED` → `J_FORM_ISSUED` → `DBT_DISBURSED` (from gate entries, the QC result and the DBT ledger, not from the farmer record's numeric `step`).
 
 | Key | Owner (writer) | Content |
 | :--- | :--- | :--- |
@@ -180,6 +181,7 @@ The modules exchange data through `localStorage`; `public/ops_store.js` (`window
 | `agriqueue_qc_samples` | Module 3; gate check-ins are appended by Module 2 | Lab queue and results (`PENDING`, `PASSED_GRADE_A`, `PASSED_DEDUCTION`, `REJECTED`) |
 | `agriqueue_gate_state` | Module 2 (through `AgriQueueStore`) | Gate entries (vehicle, entry gate, weighbridge lane, gross/tare/net with timestamps), expected arrivals, simulated trolleys |
 | `agriqueue_admin_state` | Module 4 | Counter open/close state per centre, alert/action log |
+| `agriqueue_dbt_state` | Module 5 (through `AgriQueueStore`) | J-Forms (frozen amounts), holds, PFMS payments (UTR, batch, dispatch/transit/settle times), PFMS batches, audit log |
 
 `queue_engine.js` is a pure Erlang-C (M/M/c) helper (`erlangC`, `estimateWait`, `whatIfExtraCounter`) that can also drive the farmer portal's ETA later.
 
@@ -221,4 +223,5 @@ http://localhost:3000/farmer_dashboard.html     # Module 1: Farmer
 http://localhost:3000/gate_operator.html        # Module 2: Gate & Weighbridge
 http://localhost:3000/quality_inspector.html    # Module 3: Quality Lab
 http://localhost:3000/admin_dashboard.html      # Module 4: Mandi Admin
+http://localhost:3000/dbt_portal.html           # Module 5: FCI & DBT Settlement
 ```
