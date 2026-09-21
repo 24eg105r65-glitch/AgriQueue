@@ -1,0 +1,2 @@
+1.photo verification [DONE]
+2.db connection
